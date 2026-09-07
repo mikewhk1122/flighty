@@ -1,0 +1,13 @@
+{
+  "name": "hkg-cts-fares",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Daily HKG↔CTS fare check, published as a static site.",
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/check-price.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}

@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<title>HKG–CTS 票價板</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f7f9;
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --ink: #12181f;
+    --ink-soft: #5a6472;
+    --ink-faint: #8a93a1;
+    --line: #e1e6ec;
+    --line-strong: #c9d1da;
+    --accent: #22688a;
+    --accent-ink: #ffffff;
+    --accent-soft: #dfeef5;
+    --accent-soft-ink: #124a63;
+    --good: #1c8a5e;
+    --good-soft: #dcf2e7;
+    --bad: #b2394a;
+    --bad-soft: #fbe3e6;
+    --shadow: 0 1px 2px rgba(18,24,31,0.04), 0 8px 24px -12px rgba(18,24,31,0.12);
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c1116;
+      --surface: #141b22;
+      --surface-raised: #182029;
+      --ink: #e9edf2;
+      --ink-soft: #9aa5b3;
+      --ink-faint: #66707d;
+      --line: #232c36;
+      --line-strong: #303b47;
+      --accent: #6fbcdd;
+      --accent-ink: #08222c;
+      --accent-soft: #17323d;
+      --accent-soft-ink: #a9dced;
+      --good: #4bc491;
+      --good-soft: #123526;
+      --bad: #e28796;
+      --bad-soft: #3a1d22;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0c1116;
+    --surface: #141b22;
+    --surface-raised: #182029;
+    --ink: #e9edf2;
+    --ink-soft: #9aa5b3;
+    --ink-faint: #66707d;
+    --line: #232c36;
+    --line-strong: #303b47;
+    --accent: #6fbcdd;
+    --accent-ink: #08222c;
+    --accent-soft: #17323d;
+    --accent-soft-ink: #a9dced;
+    --good: #4bc491;
+    --good-soft: #123526;
+    --bad: #e28796;
+    --bad-soft: #3a1d22;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: 'Manrope', 'Noto Sans TC', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  /* ---------- Header ---------- */
+  header.board {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    padding: 22px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+  }
+  .route-block { display: flex; align-items: center; gap: 16px; }
+  .route-code { font-family: 'Big Shoulders Display', 'Noto Sans TC', sans-serif; font-weight: 800; font-size: 40px; letter-spacing: 0.5px; line-height: 1; }
+  .route-svg { width: 84px; height: 28px; flex-shrink: 0; }
+  .route-svg path.dash { stroke: var(--line-strong); stroke-width: 1.5; stroke-dasharray: 3 4; fill: none; }
+  .route-svg circle { fill: var(--accent); }
+  .route-svg path.plane { fill: var(--accent); }
+  .trip-meta { text-align: right; }
+  .trip-dates { font-family: 'Big Shoulders Display', 'Noto Sans TC', sans-serif; font-weight: 700; font-size: 20px; color: var(--ink); }
+  .trip-sub { font-size: 12.5px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+  .countdown {
+    display: inline-flex; align-items: baseline; gap: 6px; margin-top: 8px;
+    background: var(--accent-soft); color: var(--accent-soft-ink); border-radius: 6px;
+    padding: 4px 10px; font-size: 12.5px; font-weight: 600;
+  }
+  .countdown .n { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 14px; }
+
+  h1.title { font-family: 'Big Shoulders Display', 'Noto Sans TC', sans-serif; font-weight: 700; font-size: 28px; margin: 26px 0 4px; text-wrap: balance; }
+  p.lede { color: var(--ink-soft); max-width: 62ch; margin: 0 0 24px; }
+  p.lede a { color: var(--accent); }
+
+  /* ---------- Stat tiles ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 16px 14px; box-shadow: var(--shadow); }
+  .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); font-weight: 700; }
+  .stat .value { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 26px; margin-top: 6px; letter-spacing: -0.01em; }
+  .stat .sub { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+  .stat .sub.good { color: var(--good); }
+  .stat .sub.bad { color: var(--bad); }
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; font-family: 'Space Mono', monospace; }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .pill.flat { background: var(--line); color: var(--ink-soft); }
+
+  .bagpill { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; padding: 1px 6px 1px 5px; border-radius: 999px; white-space: nowrap; }
+  .bagpill svg { width: 10px; height: 10px; flex-shrink: 0; }
+  .bagpill.incl { background: var(--good-soft); color: var(--good); }
+  .bagpill.extra { background: var(--bad-soft); color: var(--bad); }
+  .stat .bagrow { margin-top: 6px; }
+
+  /* ---------- Section frame ---------- */
+  section.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); padding: 20px 22px 22px; margin-bottom: 20px; }
+  .panel-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; gap: 12px; flex-wrap: wrap; }
+  .panel-head h2 { font-family: 'Big Shoulders Display', 'Noto Sans TC', sans-serif; font-weight: 700; font-size: 19px; margin: 0; }
+  .legend { display: flex; gap: 16px; font-size: 12.5px; color: var(--ink-soft); flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  .swatch.cheap { background: var(--accent); }
+  .swatch.reasonable { background: var(--ink-faint); background-image: repeating-linear-gradient(90deg, var(--ink-faint) 0 4px, transparent 4px 7px); }
+
+  #chart-wrap { overflow-x: auto; }
+  svg#chart { display: block; min-width: 560px; width: 100%; height: auto; }
+  .grid-line { stroke: var(--line); stroke-width: 1; }
+  .axis-label { fill: var(--ink-faint); font-size: 10.5px; font-family: 'Space Mono', 'Noto Sans TC', monospace; }
+  .line-cheap { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  .line-reasonable { fill: none; stroke: var(--ink-faint); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; }
+  .chart-empty { color: var(--ink-faint); font-size: 13px; padding: 30px 0; text-align: center; }
+
+  /* ---------- Table ---------- */
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 620px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); font-size: 13.5px; white-space: nowrap; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 700; }
+  td.num, th.num { font-family: 'Space Mono', monospace; text-align: right; }
+  td.num { vertical-align: middle; }
+  .price-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  tr:last-child td { border-bottom: none; }
+  .badge { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 4px; }
+  .badge.auto { background: var(--accent-soft); color: var(--accent-soft-ink); }
+  .badge.manual { background: var(--line); color: var(--ink-soft); }
+  .row-note { color: var(--ink-faint); font-size: 12px; white-space: normal; }
+
+  /* ---------- Info / report box ---------- */
+  .infobox {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--accent-soft); color: var(--accent-soft-ink);
+    border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.6;
+  }
+  .infobox a { color: inherit; font-weight: 700; text-decoration: underline; }
+
+  footer { color: var(--ink-faint); font-size: 12px; text-align: center; margin-top: 8px; line-height: 1.6; }
+  footer a { color: var(--ink-soft); }
+
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    header.board { flex-direction: column; align-items: flex-start; }
+    .trip-meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="board">
+    <div class="route-block">
+      <div class="route-code">HKG</div>
+      <svg class="route-svg" viewBox="0 0 84 28">
+        <circle cx="4" cy="14" r="3"></circle>
+        <path class="dash" d="M10 14 H74"></path>
+        <circle cx="80" cy="14" r="3"></circle>
+        <path class="plane" transform="translate(38,14) rotate(90)" d="M0 -5 L4 4 L0 2 L-4 4 Z"></path>
+      </svg>
+      <div class="route-code">CTS</div>
+    </div>
+    <div class="trip-meta">
+      <div class="trip-dates">2027年1月9日–16日</div>
+      <div class="trip-sub">香港 → 新千歲（札幌）· 來回</div>
+      <div class="countdown"><span class="n" id="countdownN">–</span><span>日後出發</span></div>
+    </div>
+  </header>
+
+  <h1 class="title">票價看板 — 香港飛札幌</h1>
+  <p class="lede">追蹤香港往札幌嘅來回機票價格，2027年1月9日至16日。呢個係公開版本，資料嚟自 GitHub Actions 每日自動查詢 <a href="https://www.google.com/travel/flights?q=Flights%20from%20Hong%20Kong%20to%20Sapporo%20New%20Chitose%20Jan%209%202027%20-%20Jan%2016%202027&curr=HKD&gl=HK&hl=en" target="_blank" rel="noopener">Google Flights</a>，任何人都可以睇，唔使登入。</p>
+
+  <div class="stats" id="statTiles">
+    <div class="stat">
+      <div class="label">最新最低價</div>
+      <div class="value" id="statLatest">—</div>
+      <div class="sub" id="statLatestSub">尚未有記錄</div>
+      <div class="bagrow" id="statLatestBag"></div>
+    </div>
+    <div class="stat">
+      <div class="label">對比上次查詢</div>
+      <div class="value" id="statDelta">—</div>
+      <div class="sub" id="statDeltaSub">&nbsp;</div>
+    </div>
+    <div class="stat">
+      <div class="label">歷史最低</div>
+      <div class="value" id="statLow">—</div>
+      <div class="sub" id="statLowSub">&nbsp;</div>
+    </div>
+    <div class="stat">
+      <div class="label">追蹤天數</div>
+      <div class="value" id="statCount">—</div>
+      <div class="sub" id="statCountSub">自首次記錄起</div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>價格走勢</h2>
+      <div class="legend">
+        <span><i class="swatch cheap"></i>最低價</span>
+        <span><i class="swatch reasonable"></i>8小時內最佳航班</span>
+        <span>● 已含行李 · ○ 行李另收費</span>
+      </div>
+    </div>
+    <div id="chart-wrap">
+      <svg id="chart" viewBox="0 0 900 260" preserveAspectRatio="xMinYMid meet"></svg>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>查詢記錄</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th class="num">最低價</th>
+            <th class="num">8小時內</th>
+            <th class="num">較上次</th>
+            <th>來源</th>
+          </tr>
+        </thead>
+        <tbody id="logBody">
+          <tr><td colspan="5" class="row-note">載入中…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>發現價錢有誤？</h2>
+    </div>
+    <div class="infobox">
+      <span>呢個公開版本嘅記錄全部由每日自動查詢產生（香港時間每日上午9:10），冇手動輸入功能。如果發現數字唔啱，可以喺
+        <a href="#" id="issuesLink" target="_blank" rel="noopener">GitHub 開一個 issue</a> 話俾我哋知，我哋會核對並修正 <code>data/prices.json</code>。</span>
+    </div>
+  </section>
+
+  <footer>
+    票價為港幣，1位成人，經濟艙，資料來自 Google Flights——已包含稅項，行李及座位費用可能另計。<br>
+    資料每日由 <a href="#" id="repoLink" target="_blank" rel="noopener">GitHub Actions</a> 自動更新並公開發佈，原始資料：
+    <a href="data/prices.json" target="_blank" rel="noopener">data/prices.json</a>。
+    最後更新：<span id="lastUpdated">—</span>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var DEPARTURE = new Date("2027-01-09T00:00:00+08:00");
+  var fmtHKD = new Intl.NumberFormat('zh-Hant-HK', { style: 'currency', currency: 'HKD', maximumFractionDigits: 0 });
+  var fmtDateShort = function (iso) {
+    var d = new Date(iso + "T00:00:00Z");
+    return d.toLocaleDateString('zh-Hant-HK', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  };
+  var fmtDateTime = function (iso) {
+    var d = new Date(iso);
+    return d.toLocaleString('zh-Hant-HK', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Hong_Kong' });
+  };
+
+  // Point the footer/report links at this repo, however it's hosted (works
+  // on a project page like user.github.io/repo/ or a custom domain).
+  (function wireRepoLinks() {
+    var path = location.pathname.replace(/^\/|\/$/g, '').split('/');
+    var repoSlug = path.length && path[0] ? path[0] : '';
+    var host = location.hostname; // e.g. "username.github.io"
+    var owner = host.endsWith('.github.io') ? host.replace('.github.io', '') : '';
+    var repoUrl = owner && repoSlug ? 'https://github.com/' + owner + '/' + repoSlug : 'https://github.com';
+    document.getElementById('issuesLink').href = repoUrl + '/issues/new?title=' + encodeURIComponent('票價有誤');
+    document.getElementById('repoLink').href = repoUrl + '/actions';
+  })();
+
+  function updateCountdown() {
+    var now = new Date();
+    var days = Math.ceil((DEPARTURE - now) / 86400000);
+    document.getElementById('countdownN').textContent = days > 0 ? days : (days === 0 ? '0' : '—');
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 3600000);
+
+  var BAG_ICON = '<svg viewBox="0 0 16 16"><rect x="2" y="5.5" width="12" height="8" rx="1.3" fill="none" stroke="currentColor" stroke-width="1.4"></rect><path d="M6 5.5V4a1.5 1.5 0 0 1 1.5-1.5h1A1.5 1.5 0 0 1 10 4v1.5" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg>';
+  function bagBadge(status) {
+    if (status === 'included') return '<span class="bagpill incl">' + BAG_ICON + '含行李</span>';
+    if (status === 'extra') return '<span class="bagpill extra">' + BAG_ICON + '行李另收費</span>';
+    return '';
+  }
+
+  function render(entries) {
+    var sorted = entries.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+
+    var statLatest = document.getElementById('statLatest');
+    var statLatestSub = document.getElementById('statLatestSub');
+    var statLatestBag = document.getElementById('statLatestBag');
+    var statDelta = document.getElementById('statDelta');
+    var statDeltaSub = document.getElementById('statDeltaSub');
+    var statLow = document.getElementById('statLow');
+    var statLowSub = document.getElementById('statLowSub');
+    var statCount = document.getElementById('statCount');
+    var statCountSub = document.getElementById('statCountSub');
+
+    if (sorted.length === 0) {
+      statLatest.textContent = '—';
+      statLatestSub.textContent = '尚未有記錄';
+      statDelta.textContent = '—';
+      statLow.textContent = '—';
+      statCount.textContent = '0';
+      statLatestBag.innerHTML = '';
+    } else {
+      var latest = sorted[sorted.length - 1];
+      statLatest.textContent = fmtHKD.format(latest.cheapest);
+      statLatestSub.textContent = fmtDateShort(latest.date) + ' 查詢';
+      statLatestBag.innerHTML = bagBadge(latest.bagCheap);
+
+      if (sorted.length >= 2) {
+        var prev = sorted[sorted.length - 2];
+        var diff = latest.cheapest - prev.cheapest;
+        var pct = prev.cheapest ? (diff / prev.cheapest * 100) : 0;
+        var sign = diff > 0 ? '+' : (diff < 0 ? '−' : '±');
+        statDelta.textContent = sign + fmtHKD.format(Math.abs(diff)).replace('HK$', '$');
+        if (diff < 0) statDelta.style.color = 'var(--good)';
+        else if (diff > 0) statDelta.style.color = 'var(--bad)';
+        else statDelta.style.color = '';
+        statDeltaSub.textContent = diff === 0 ? '沒有變動' : ('較' + fmtDateShort(prev.date) + (diff < 0 ? '下跌' : '上升') + ' ' + Math.abs(pct).toFixed(1) + '%');
+        statDeltaSub.className = 'sub ' + (diff < 0 ? 'good' : (diff > 0 ? 'bad' : ''));
+      } else {
+        statDelta.textContent = '—';
+        statDelta.style.color = '';
+        statDeltaSub.textContent = '需要兩次以上記錄';
+        statDeltaSub.className = 'sub';
+      }
+
+      var lowest = sorted.reduce(function (m, e) { return e.cheapest < m.cheapest ? e : m; }, sorted[0]);
+      statLow.textContent = fmtHKD.format(lowest.cheapest);
+      statLowSub.textContent = fmtDateShort(lowest.date);
+
+      statCount.textContent = String(sorted.length);
+      statCountSub.textContent = '自' + fmtDateShort(sorted[0].date) + '起';
+    }
+
+    var body = document.getElementById('logBody');
+    if (sorted.length === 0) {
+      body.innerHTML = '<tr><td colspan="5" class="row-note">尚未有任何記錄。</td></tr>';
+    } else {
+      body.innerHTML = sorted.slice().reverse().map(function (e) {
+        var priorIdx = sorted.indexOf(e) - 1;
+        var deltaCell = '<span class="row-note">—</span>';
+        if (priorIdx >= 0) {
+          var prior = sorted[priorIdx];
+          var d = e.cheapest - prior.cheapest;
+          if (d === 0) deltaCell = '<span class="pill flat">±' + fmtHKD.format(0).replace('HK$', '$') + '</span>';
+          else deltaCell = '<span class="pill ' + (d < 0 ? 'good' : 'bad') + '">' + (d < 0 ? '▼' : '▲') + ' ' + fmtHKD.format(Math.abs(d)).replace('HK$', '$') + '</span>';
+        }
+        var srcBadge = '<span class="badge auto">自動</span>';
+        var cheapCell = '<div class="price-cell">' + fmtHKD.format(e.cheapest) + bagBadge(e.bagCheap) + '</div>';
+        var reasonableCell = e.reasonable != null
+          ? '<div class="price-cell">' + fmtHKD.format(e.reasonable) + bagBadge(e.bagReasonable) + '</div>'
+          : '<span class="row-note">—</span>';
+        return '<tr>' +
+          '<td>' + fmtDateShort(e.date) + '</td>' +
+          '<td class="num">' + cheapCell + '</td>' +
+          '<td class="num">' + reasonableCell + '</td>' +
+          '<td class="num">' + deltaCell + '</td>' +
+          '<td>' + srcBadge + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    drawChart(sorted);
+
+    var lastUpdatedEl = document.getElementById('lastUpdated');
+    if (sorted.length) {
+      var lastEntry = sorted[sorted.length - 1];
+      lastUpdatedEl.textContent = lastEntry.loggedAt ? fmtDateTime(lastEntry.loggedAt) : fmtDateShort(lastEntry.date);
+    }
+  }
+
+  function drawChart(sorted) {
+    var svg = document.getElementById('chart');
+    var W = 900, H = 260, padL = 56, padR = 20, padT = 16, padB = 34;
+
+    if (sorted.length === 0) {
+      svg.innerHTML = '<text x="450" y="130" text-anchor="middle" class="axis-label" style="font-size:13px">暫時沒有資料。</text>';
+      return;
+    }
+
+    var allVals = [];
+    sorted.forEach(function (e) {
+      allVals.push(e.cheapest);
+      if (e.reasonable != null) allVals.push(e.reasonable);
+    });
+    var vMin = Math.min.apply(null, allVals);
+    var vMax = Math.max.apply(null, allVals);
+    if (vMin === vMax) { vMin -= 1000; vMax += 1000; }
+    var pad = (vMax - vMin) * 0.12;
+    vMin = Math.max(0, vMin - pad);
+    vMax = vMax + pad;
+
+    var n = sorted.length;
+    var x = function (i) { return n === 1 ? (padL + (W - padL - padR) / 2) : padL + (i / (n - 1)) * (W - padL - padR); };
+    var y = function (v) { return padT + (1 - (v - vMin) / (vMax - vMin)) * (H - padT - padB); };
+
+    var parts = [];
+    var bands = 4;
+    for (var b = 0; b <= bands; b++) {
+      var v = vMin + (vMax - vMin) * (b / bands);
+      var yy = y(v);
+      parts.push('<line class="grid-line" x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yy + '" y2="' + yy + '"></line>');
+      parts.push('<text class="axis-label" x="' + (padL - 8) + '" y="' + (yy + 3) + '" text-anchor="end">$' + Math.round(v).toLocaleString() + '</text>');
+    }
+
+    var step = Math.ceil(n / 8);
+    sorted.forEach(function (e, i) {
+      if (i % step === 0 || i === n - 1) {
+        parts.push('<text class="axis-label" x="' + x(i) + '" y="' + (H - padB + 16) + '" text-anchor="middle">' + fmtDateShort(e.date) + '</text>');
+      }
+    });
+
+    function pathFor(key) {
+      var pts = sorted.map(function (e, i) { return e[key] != null ? [x(i), y(e[key])] : null; });
+      var d = '', started = false;
+      pts.forEach(function (p) {
+        if (!p) { started = false; return; }
+        d += (started ? ' L ' : ' M ') + p[0].toFixed(1) + ' ' + p[1].toFixed(1);
+        started = true;
+      });
+      return d.trim();
+    }
+
+    if (n > 1) {
+      parts.push('<path class="line-reasonable" d="' + pathFor('reasonable') + '"></path>');
+      parts.push('<path class="line-cheap" d="' + pathFor('cheapest') + '"></path>');
+    }
+
+    function dotAttrs(colorVar, status) {
+      if (status === 'extra') return 'fill="var(--surface)" stroke="var(' + colorVar + ')" stroke-width="2"';
+      if (status === 'included') return 'fill="var(' + colorVar + ')" stroke="none"';
+      return 'fill="var(' + colorVar + ')" stroke="none" opacity="0.45"';
+    }
+
+    sorted.forEach(function (e, i) {
+      var titleCheap = fmtDateShort(e.date) + ' · 最低價 ' + fmtHKD.format(e.cheapest) +
+        (e.bagCheap === 'included' ? ' · 已含行李' : e.bagCheap === 'extra' ? ' · 行李另收費' : ' · 行李狀況未知');
+      parts.push('<circle cx="' + x(i) + '" cy="' + y(e.cheapest) + '" r="3.5" ' + dotAttrs('--accent', e.bagCheap) + '><title>' + titleCheap + '</title></circle>');
+      if (e.reasonable != null) {
+        var titleR = fmtDateShort(e.date) + ' · 8小時內 ' + fmtHKD.format(e.reasonable) +
+          (e.bagReasonable === 'included' ? ' · 已含行李' : e.bagReasonable === 'extra' ? ' · 行李另收費' : ' · 行李狀況未知');
+        parts.push('<circle cx="' + x(i) + '" cy="' + y(e.reasonable) + '" r="3" ' + dotAttrs('--ink-faint', e.bagReasonable) + '><title>' + titleR + '</title></circle>');
+      }
+    });
+
+    svg.innerHTML = parts.join('');
+  }
+
+  fetch('data/prices.json', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (store) {
+      var entries = Object.keys(store).map(function (date) {
+        var d = store[date];
+        return {
+          date: date,
+          cheapest: d.cheapest,
+          reasonable: d.reasonable != null ? d.reasonable : null,
+          bagCheap: d.bagCheap || null,
+          bagReasonable: d.bagReasonable || null,
+          loggedAt: d.loggedAt || null,
+        };
+      });
+      render(entries);
+    })
+    .catch(function (err) {
+      console.error('failed to load data/prices.json', err);
+      render([]);
+    });
+})();
+</script>
+</body>
+</html>
