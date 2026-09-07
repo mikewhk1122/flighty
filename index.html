@@ -229,7 +229,7 @@
       <div class="sub" id="statLowSub">&nbsp;</div>
     </div>
     <div class="stat">
-      <div class="label">追蹤天數</div>
+      <div class="label">查詢次數</div>
       <div class="value" id="statCount">—</div>
       <div class="sub" id="statCountSub">自首次記錄起</div>
     </div>
@@ -276,7 +276,7 @@
       <h2>發現價錢有誤？</h2>
     </div>
     <div class="infobox">
-      <span>呢個公開版本嘅記錄全部由每日自動查詢產生（香港時間每日上午9:10），冇手動輸入功能。如果發現數字唔啱，可以喺
+      <span>呢個公開版本嘅記錄全部由自動查詢產生（香港時間每日上午9:10同晚上9:10，每日兩次），冇手動輸入功能。如果發現數字唔啱，可以喺
         <a href="#" id="issuesLink" target="_blank" rel="noopener">GitHub 開一個 issue</a> 話俾我哋知，我哋會核對並修正 <code>data/prices.json</code>。</span>
     </div>
   </section>
@@ -294,9 +294,19 @@
 (function () {
   var DEPARTURE = new Date("2027-01-09T00:00:00+08:00");
   var fmtHKD = new Intl.NumberFormat('zh-Hant-HK', { style: 'currency', currency: 'HKD', maximumFractionDigits: 0 });
-  var fmtDateShort = function (iso) {
-    var d = new Date(iso + "T00:00:00Z");
-    return d.toLocaleDateString('zh-Hant-HK', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  // Entry ids are either a bare date "2026-09-08" (older, one-check-per-day
+  // entries) or a full ISO timestamp (current — one entry per run, however
+  // often the workflow fires). Render bare dates as just the date, and full
+  // timestamps with the HK-local time too, so same-day entries stay distinct.
+  var parseWhen = function (id) {
+    return id.length <= 10 ? new Date(id + "T00:00:00Z") : new Date(id);
+  };
+  var fmtDateShort = function (id) {
+    var d = parseWhen(id);
+    if (id.length <= 10) {
+      return d.toLocaleDateString('zh-Hant-HK', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    }
+    return d.toLocaleString('zh-Hant-HK', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Hong_Kong' });
   };
   var fmtDateTime = function (iso) {
     var d = new Date(iso);

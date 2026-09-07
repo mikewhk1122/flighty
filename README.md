@@ -1,9 +1,10 @@
 # HKG–CTS 票價板 (public)
 
 A public, no-login fare board for the HKG ↔ CTS (Hong Kong ↔ New Chitose/Sapporo)
-round trip, 9–16 Jan 2027. A GitHub Actions workflow checks Google Flights once
-a day and commits the result to `data/prices.json`; `index.html` reads that file
-and renders the chart/table — no backend, no database, no login required to view.
+round trip, 9–16 Jan 2027. A GitHub Actions workflow checks Google Flights every
+12 hours and commits the result to `data/prices.json`; `index.html` reads that
+file and renders the chart/table — no backend, no database, no login required
+to view.
 
 ## One-time setup (do this after pushing the code)
 
@@ -17,11 +18,11 @@ and renders the chart/table — no backend, no database, no login required to vi
    tab → if prompted, click "I understand my workflows, go ahead and enable
    them".
 4. **Optional — run it once immediately** instead of waiting for the first
-   scheduled run: *Actions* tab → "Daily fare check" workflow → *Run workflow*.
+   scheduled run: *Actions* tab → "Fare check" workflow → *Run workflow*.
 
-That's it — from then on, the workflow fires daily at 09:10 Asia/Hong_Kong
-time, updates `data/prices.json`, and the Pages site picks up the change
-automatically (no separate deploy step needed).
+That's it — from then on, the workflow fires at 09:10 and 21:10 Asia/Hong_Kong
+time (every 12h), updates `data/prices.json`, and the Pages site picks up the
+change automatically (no separate deploy step needed).
 
 ## How it works
 
@@ -30,9 +31,12 @@ automatically (no separate deploy step needed).
   HKD/Hong Kong, parses the results for the single cheapest fare and the
   cheapest fare with an outbound leg ≤8h, best-effort checks whether each of
   those two fares includes a checked bag, and writes the result into
-  `data/prices.json` keyed by today's date (Asia/Hong_Kong).
-- `.github/workflows/daily-check.yml` — runs that script daily via cron and
-  commits the updated JSON straight to `main`.
+  `data/prices.json` keyed by this run's full timestamp — every run gets its
+  own entry, so more frequent checks mean more data points, not overwritten
+  ones.
+- `.github/workflows/daily-check.yml` (workflow name: "Fare check") — runs
+  that script on a cron (every 12h) and commits the updated JSON straight to
+  `main`, retrying with a rebase if another commit landed on `main` first.
 - `index.html` — a static page, no build step. Fetches `data/prices.json` on
   load and renders the same design as the original tracker (chart, stat
   tiles, check-in table, baggage badges).

@@ -1,7 +1,9 @@
-// Daily HKG <-> CTS fare check. Scrapes Google Flights (headless, HKD/HK/en pinned),
+// HKG <-> CTS fare check. Scrapes Google Flights (headless, HKD/HK/en pinned),
 // parses the results text for the cheapest fare and the cheapest fare with an
 // outbound leg of 8h or less, and writes both into data/prices.json keyed by
-// today's Asia/Hong_Kong date. Run via GitHub Actions on a daily cron.
+// this run's full timestamp. Run via GitHub Actions on a cron (currently
+// twice daily) — every run gets its own entry, none are overwritten, so
+// running more often just means more data points, not lost ones.
 
 import { chromium } from 'playwright';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -16,17 +18,22 @@ const SEARCH_URL =
 
 const REASONABLE_MAX_MINUTES = 8 * 60;
 
-function todayHK() {
-  // Asia/Hong_Kong is UTC+8, no DST.
+// A human-readable Asia/Hong_Kong timestamp, e.g. "2026-09-08 09:10 HKT" —
+// used in the Discord embed and the console summary.
+function nowHKLabel() {
   const now = new Date();
   const hk = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-  return hk.toISOString().slice(0, 10);
+  const iso = hk.toISOString(); // e.g. 2026-09-08T01:10:23.456Z, already HK-shifted
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} HKT`;
 }
 
-function yesterdayOf(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
+// The chronologically most recent existing entry, if any — the ISO-8601
+// keys sort correctly as plain strings, so the largest key below `beforeKey`
+// is simply the last one in sorted order.
+function findPreviousEntry(store, beforeKey) {
+  const keys = Object.keys(store).filter((k) => k < beforeKey).sort();
+  if (!keys.length) return null;
+  return store[keys[keys.length - 1]];
 }
 
 // Parse the flat innerText of the results page into flight entries.
@@ -108,14 +115,14 @@ const BAG_LABEL = { included: '含行李', extra: '行李另收費', null: '行�
 
 // Shared embed builder — used by both the channel webhook and the bot DM,
 // so the two notification paths never drift out of sync with each other.
-function buildEmbed({ date, cheapestFlight, reasonableFlight, bagCheap, bagReasonable, prev }) {
+function buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, bagCheap, bagReasonable, prev }) {
   let deltaLine = '首次記錄';
   let color = 0x8a93a1; // neutral grey
   if (prev && typeof prev.cheapest === 'number') {
     const diff = cheapestFlight.price - prev.cheapest;
     const pct = prev.cheapest ? (diff / prev.cheapest) * 100 : 0;
     if (diff === 0) {
-      deltaLine = '同琴日一樣';
+      deltaLine = '同上次一樣';
     } else {
       deltaLine = `${diff < 0 ? '▼ 跌咗' : '▲ 升咗'} HK$${Math.abs(diff).toLocaleString()}（${Math.abs(pct).toFixed(1)}%）`;
       color = diff < 0 ? 0x1c8a5e : 0xb2394a;
@@ -125,7 +132,7 @@ function buildEmbed({ date, cheapestFlight, reasonableFlight, bagCheap, bagReaso
   return {
     title: 'HKG ⇄ CTS 票價更新',
     url: SITE_URL,
-    description: `9–16 Jan 2027 · ${date}`,
+    description: `9–16 Jan 2027 · ${whenLabel}`,
     color,
     fields: [
       {
@@ -138,9 +145,9 @@ function buildEmbed({ date, cheapestFlight, reasonableFlight, bagCheap, bagReaso
         value: `HK$${reasonableFlight.price.toLocaleString()}（${BAG_LABEL[bagReasonable]}）\n${describeFlight(reasonableFlight)}`,
         inline: true,
       },
-      { name: '對比琴日', value: deltaLine, inline: false },
+      { name: '對比上次查詢', value: deltaLine, inline: false },
     ],
-    footer: { text: '每日自動查詢 · flighty' },
+    footer: { text: '自動查詢 · flighty' },
     timestamp: new Date().toISOString(),
   };
 }
@@ -279,7 +286,9 @@ async function main() {
   const reasonableFlight = (underEight.length ? underEight : flights.slice().sort((a, b) => (a.minutes ?? 1e9) - (b.minutes ?? 1e9)))
     .reduce((a, b) => (b.price < a.price ? b : a));
 
-  const date = todayHK();
+  const loggedAt = new Date().toISOString();
+  const docId = loggedAt; // full timestamp key — every run gets its own entry
+  const whenLabel = nowHKLabel();
   const note =
     `Cheapest: ${describeFlight(cheapestFlight)}.` +
     ` Best <=8h: ${describeFlight(reasonableFlight)}` +
@@ -292,24 +301,23 @@ async function main() {
     store = {};
   }
 
-  const prevDate = yesterdayOf(date);
-  const prev = store[prevDate];
+  const prev = findPreviousEntry(store, docId);
 
-  store[date] = {
+  store[docId] = {
     cheapest: cheapestFlight.price,
     reasonable: reasonableFlight.price,
     ...(bagCheap ? { bagCheap } : {}),
     ...(bagReasonable ? { bagReasonable } : {}),
     currency: 'HKD',
     source: 'auto',
-    loggedBy: 'Automated daily check',
-    loggedAt: new Date().toISOString(),
+    loggedBy: 'Automated check',
+    loggedAt,
     note,
   };
 
   await writeFile(DATA_PATH, JSON.stringify(store, null, 2) + '\n', 'utf8');
 
-  const embed = buildEmbed({ date, cheapestFlight, reasonableFlight, bagCheap, bagReasonable, prev });
+  const embed = buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, bagCheap, bagReasonable, prev });
   await notifyDiscordWebhook(embed);
   await notifyDiscordDM(embed);
 
@@ -318,7 +326,7 @@ async function main() {
   if (prev && typeof prev.cheapest === 'number') {
     const diff = cheapestFlight.price - prev.cheapest;
     const pct = prev.cheapest ? (diff / prev.cheapest) * 100 : 0;
-    summary += ` Vs yesterday: ${diff === 0 ? 'flat' : (diff < 0 ? '-' : '+') + 'HK$' + Math.abs(diff).toLocaleString() + ` (${pct.toFixed(1)}%)`}.`;
+    summary += ` Vs previous check: ${diff === 0 ? 'flat' : (diff < 0 ? '-' : '+') + 'HK$' + Math.abs(diff).toLocaleString() + ` (${pct.toFixed(1)}%)`}.`;
   }
   console.log(summary);
 }

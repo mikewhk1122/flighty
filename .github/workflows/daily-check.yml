@@ -1,16 +1,16 @@
-name: Daily fare check
+name: Fare check
 
 on:
   schedule:
-    # 01:10 UTC = 09:10 Asia/Hong_Kong (no DST)
-    - cron: "10 1 * * *"
+    # 01:10 and 13:10 UTC = 09:10 and 21:10 Asia/Hong_Kong (no DST) — every 12h
+    - cron: "10 1,13 * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
 concurrency:
-  group: daily-fare-check
+  group: fare-check
   cancel-in-progress: false
 
 jobs:
