@@ -48,5 +48,15 @@ jobs:
           else
             git add data/prices.json
             git commit -m "Daily fare check: $(date -u +%Y-%m-%d)"
-            git push
+            # Another commit (a manual re-run, a same-day retry) may have
+            # landed on main since this job checked it out — rebase onto
+            # whatever's latest before pushing, instead of failing outright.
+            for attempt in 1 2 3; do
+              if git push; then
+                break
+              fi
+              echo "Push rejected (attempt $attempt/3) — fetching and rebasing onto origin/main..."
+              git fetch origin main
+              git rebase origin/main
+            done
           fi
