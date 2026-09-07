@@ -52,6 +52,27 @@ static server (not `file://`, since `fetch()` needs http) to preview, e.g.:
 npx http-server . -p 4173
 ```
 
+## Optional: Discord notifications
+
+Either or both of these can be set up independently, as GitHub repository
+secrets (*Settings → Secrets and variables → Actions*). If none are set, the
+workflow just skips notifications and still updates `data/prices.json`.
+
+**A channel message**, via an incoming webhook — no bot needed:
+1. In Discord, open the target channel's settings (or *Server Settings →
+   Integrations*) → **Webhooks → New Webhook**, pick the channel, copy the URL.
+2. Add it as secret **`DISCORD_WEBHOOK_URL`**.
+
+**A DM to you personally**, via a real Discord Bot application (never a
+self-bot / personal-account automation — that violates Discord's ToS):
+1. Create an app at [discord.com/developers/applications](https://discord.com/developers/applications)
+   → **Bot** tab → **Reset Token** → copy it → add as secret **`DISCORD_BOT_TOKEN`**.
+2. **OAuth2 → URL Generator** → check scope `bot` (no permissions needed) →
+   open the generated URL → invite it to any server you're in (Discord
+   requires the bot to share a server with you before it can DM you).
+3. Turn on **Developer Mode** (User Settings → Advanced), right-click your
+   own name → **Copy User ID** → add as secret **`DISCORD_USER_ID`**.
+
 ## No write-back from the public page
 
 The public page is view-only — there's no backend to safely accept anonymous

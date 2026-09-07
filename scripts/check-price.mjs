@@ -106,15 +106,9 @@ async function checkBagStatus(page, price) {
 const SITE_URL = 'https://mikewhk1122.github.io/flighty/';
 const BAG_LABEL = { included: '含行李', extra: '行李另收費', null: '行李未知', undefined: '行李未知' };
 
-// Post today's result to a Discord channel via an incoming webhook — no bot
-// process to host, just one POST. Silently does nothing if the
-// DISCORD_WEBHOOK_URL secret isn't set (e.g. local runs), and never lets a
-// notification failure affect the exit code — the price data is already
-// safely written by the time this runs.
-async function notifyDiscord({ date, cheapestFlight, reasonableFlight, bagCheap, bagReasonable, prev }) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) return;
-
+// Shared embed builder — used by both the channel webhook and the bot DM,
+// so the two notification paths never drift out of sync with each other.
+function buildEmbed({ date, cheapestFlight, reasonableFlight, bagCheap, bagReasonable, prev }) {
   let deltaLine = '首次記錄';
   let color = 0x8a93a1; // neutral grey
   if (prev && typeof prev.cheapest === 'number') {
@@ -128,43 +122,91 @@ async function notifyDiscord({ date, cheapestFlight, reasonableFlight, bagCheap,
     }
   }
 
-  const body = {
-    embeds: [
+  return {
+    title: 'HKG ⇄ CTS 票價更新',
+    url: SITE_URL,
+    description: `9–16 Jan 2027 · ${date}`,
+    color,
+    fields: [
       {
-        title: 'HKG ⇄ CTS 票價更新',
-        url: SITE_URL,
-        description: `9–16 Jan 2027 · ${date}`,
-        color,
-        fields: [
-          {
-            name: '最低價',
-            value: `HK$${cheapestFlight.price.toLocaleString()}（${BAG_LABEL[bagCheap]}）\n${describeFlight(cheapestFlight)}`,
-            inline: true,
-          },
-          {
-            name: '8小時內',
-            value: `HK$${reasonableFlight.price.toLocaleString()}（${BAG_LABEL[bagReasonable]}）\n${describeFlight(reasonableFlight)}`,
-            inline: true,
-          },
-          { name: '對比琴日', value: deltaLine, inline: false },
-        ],
-        footer: { text: '每日自動查詢 · flighty' },
-        timestamp: new Date().toISOString(),
+        name: '最低價',
+        value: `HK$${cheapestFlight.price.toLocaleString()}（${BAG_LABEL[bagCheap]}）\n${describeFlight(cheapestFlight)}`,
+        inline: true,
       },
+      {
+        name: '8小時內',
+        value: `HK$${reasonableFlight.price.toLocaleString()}（${BAG_LABEL[bagReasonable]}）\n${describeFlight(reasonableFlight)}`,
+        inline: true,
+      },
+      { name: '對比琴日', value: deltaLine, inline: false },
     ],
+    footer: { text: '每日自動查詢 · flighty' },
+    timestamp: new Date().toISOString(),
   };
+}
+
+// Post today's result to a Discord channel via an incoming webhook — no bot
+// process to host, just one POST. Silently does nothing if the
+// DISCORD_WEBHOOK_URL secret isn't set (e.g. local runs), and never lets a
+// notification failure affect the exit code — the price data is already
+// safely written by the time this runs.
+async function notifyDiscordWebhook(embed) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) return;
 
   try {
     const res = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ embeds: [embed] }),
     });
     if (!res.ok) {
       console.error('Discord webhook responded', res.status, await res.text());
     }
   } catch (err) {
     console.error('Discord webhook post failed:', err.message);
+  }
+}
+
+// DM the given Discord user directly, via a real Discord Bot application
+// (never a personal/self-bot account — that violates Discord's ToS).
+// Needs DISCORD_BOT_TOKEN + DISCORD_USER_ID; the bot must already share a
+// server with that user (Discord requires this before it will open a DM),
+// see README for the one-time setup. Silently does nothing if either env
+// var is unset, and never lets a failure here affect the exit code.
+async function notifyDiscordDM(embed) {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  const userId = process.env.DISCORD_USER_ID;
+  if (!token || !userId) return;
+
+  const headers = {
+    Authorization: `Bot ${token}`,
+    'Content-Type': 'application/json',
+    'User-Agent': 'flighty-fare-bot (https://github.com/mikewhk1122/flighty, 1.0)',
+  };
+
+  try {
+    const dmRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ recipient_id: userId }),
+    });
+    if (!dmRes.ok) {
+      console.error('Discord DM-channel open failed:', dmRes.status, await dmRes.text());
+      return;
+    }
+    const channel = await dmRes.json();
+
+    const msgRes = await fetch(`https://discord.com/api/v10/channels/${channel.id}/messages`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ embeds: [embed] }),
+    });
+    if (!msgRes.ok) {
+      console.error('Discord DM send failed:', msgRes.status, await msgRes.text());
+    }
+  } catch (err) {
+    console.error('Discord DM failed:', err.message);
   }
 }
 
@@ -267,7 +309,9 @@ async function main() {
 
   await writeFile(DATA_PATH, JSON.stringify(store, null, 2) + '\n', 'utf8');
 
-  await notifyDiscord({ date, cheapestFlight, reasonableFlight, bagCheap, bagReasonable, prev });
+  const embed = buildEmbed({ date, cheapestFlight, reasonableFlight, bagCheap, bagReasonable, prev });
+  await notifyDiscordWebhook(embed);
+  await notifyDiscordDM(embed);
 
   let summary = `Cheapest HK$${cheapestFlight.price.toLocaleString()} (${describeFlight(cheapestFlight)}, bag: ${bagCheap || 'unknown'}). ` +
     `<=8h fare HK$${reasonableFlight.price.toLocaleString()} (${describeFlight(reasonableFlight)}, bag: ${bagReasonable || 'unknown'}).`;
