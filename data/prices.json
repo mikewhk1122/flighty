@@ -9,5 +9,16 @@
     "loggedBy": "Automated check",
     "loggedAt": "2026-09-07T19:28:00.821Z",
     "note": "Cheapest: Cebu Pacific, 1 stop, ~18h35m. Best <=8h: ANA, 1 stop, ~7h25m."
+  },
+  "2026-09-07T19:38:30.727Z": {
+    "cheapest": 3854,
+    "reasonable": 4829,
+    "bagCheap": "extra",
+    "bagReasonable": "included",
+    "currency": "HKD",
+    "source": "auto",
+    "loggedBy": "Automated check",
+    "loggedAt": "2026-09-07T19:38:30.727Z",
+    "note": "Cheapest: Cebu Pacific, 1 stop, ~18h35m. Best <=8h: ANA, 1 stop, ~7h25m."
   }
 }
