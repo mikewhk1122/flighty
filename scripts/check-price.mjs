@@ -103,6 +103,71 @@ async function checkBagStatus(page, price) {
   return bag;
 }
 
+const SITE_URL = 'https://mikewhk1122.github.io/flighty/';
+const BAG_LABEL = { included: '含行李', extra: '行李另收費', null: '行李未知', undefined: '行李未知' };
+
+// Post today's result to a Discord channel via an incoming webhook — no bot
+// process to host, just one POST. Silently does nothing if the
+// DISCORD_WEBHOOK_URL secret isn't set (e.g. local runs), and never lets a
+// notification failure affect the exit code — the price data is already
+// safely written by the time this runs.
+async function notifyDiscord({ date, cheapestFlight, reasonableFlight, bagCheap, bagReasonable, prev }) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  let deltaLine = '首次記錄';
+  let color = 0x8a93a1; // neutral grey
+  if (prev && typeof prev.cheapest === 'number') {
+    const diff = cheapestFlight.price - prev.cheapest;
+    const pct = prev.cheapest ? (diff / prev.cheapest) * 100 : 0;
+    if (diff === 0) {
+      deltaLine = '同琴日一樣';
+    } else {
+      deltaLine = `${diff < 0 ? '▼ 跌咗' : '▲ 升咗'} HK$${Math.abs(diff).toLocaleString()}（${Math.abs(pct).toFixed(1)}%）`;
+      color = diff < 0 ? 0x1c8a5e : 0xb2394a;
+    }
+  }
+
+  const body = {
+    embeds: [
+      {
+        title: 'HKG ⇄ CTS 票價更新',
+        url: SITE_URL,
+        description: `9–16 Jan 2027 · ${date}`,
+        color,
+        fields: [
+          {
+            name: '最低價',
+            value: `HK$${cheapestFlight.price.toLocaleString()}（${BAG_LABEL[bagCheap]}）\n${describeFlight(cheapestFlight)}`,
+            inline: true,
+          },
+          {
+            name: '8小時內',
+            value: `HK$${reasonableFlight.price.toLocaleString()}（${BAG_LABEL[bagReasonable]}）\n${describeFlight(reasonableFlight)}`,
+            inline: true,
+          },
+          { name: '對比琴日', value: deltaLine, inline: false },
+        ],
+        footer: { text: '每日自動查詢 · flighty' },
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      console.error('Discord webhook responded', res.status, await res.text());
+    }
+  } catch (err) {
+    console.error('Discord webhook post failed:', err.message);
+  }
+}
+
 function describeFlight(f) {
   const parts = [];
   if (f.airline) parts.push(f.airline);
@@ -201,6 +266,8 @@ async function main() {
   };
 
   await writeFile(DATA_PATH, JSON.stringify(store, null, 2) + '\n', 'utf8');
+
+  await notifyDiscord({ date, cheapestFlight, reasonableFlight, bagCheap, bagReasonable, prev });
 
   let summary = `Cheapest HK$${cheapestFlight.price.toLocaleString()} (${describeFlight(cheapestFlight)}, bag: ${bagCheap || 'unknown'}). ` +
     `<=8h fare HK$${reasonableFlight.price.toLocaleString()} (${describeFlight(reasonableFlight)}, bag: ${bagReasonable || 'unknown'}).`;

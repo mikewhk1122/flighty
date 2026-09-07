@@ -33,6 +33,8 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run the fare check
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: npm run check
 
       - name: Commit updated prices
