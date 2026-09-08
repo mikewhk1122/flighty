@@ -1,10 +1,10 @@
 # HKG–CTS 票價板 (public)
 
 A public, no-login fare board for the HKG ↔ CTS (Hong Kong ↔ New Chitose/Sapporo)
-round trip, 9–16 Jan 2027. A GitHub Actions workflow checks Google Flights every
-12 hours and commits the result to `data/prices.json`; `index.html` reads that
-file and renders the chart/table — no backend, no database, no login required
-to view.
+round trip, 9–16 Jan 2027. A GitHub Actions workflow checks Google Flights (via
+[SerpApi](https://serpapi.com)) every 12 hours and commits the result to
+`data/prices.json`; `index.html` reads that file and renders the chart/table —
+no backend, no database, no login required to view.
 
 ## One-time setup (do this after pushing the code)
 
@@ -17,7 +17,11 @@ to view.
 3. **Enable Actions** (usually on by default for a new repo): repo → *Actions*
    tab → if prompted, click "I understand my workflows, go ahead and enable
    them".
-4. **Optional — run it once immediately** instead of waiting for the first
+4. **Get a SerpApi key**: sign up (free) at
+   [serpapi.com](https://serpapi.com), copy your API key from the dashboard,
+   add it as a repo secret named **`SERPAPI_KEY`** (*Settings → Secrets and
+   variables → Actions → New repository secret*).
+5. **Optional — run it once immediately** instead of waiting for the first
    scheduled run: *Actions* tab → "Fare check" workflow → *Run workflow*.
 
 That's it — from then on, the workflow fires at 09:10 and 21:10 Asia/Hong_Kong
@@ -26,31 +30,30 @@ change automatically (no separate deploy step needed).
 
 ## How it works
 
-- `scripts/check-price.mjs` — launches headless Chromium (Playwright),
-  loads a saved Google Flights search with the currency/region pinned to
-  HKD/Hong Kong, parses the results for the single cheapest fare and the
-  cheapest fare with an outbound leg ≤8h, best-effort checks whether each of
-  those two fares includes a checked bag, and writes the result into
-  `data/prices.json` keyed by this run's full timestamp — every run gets its
-  own entry, so more frequent checks mean more data points, not overwritten
-  ones.
+- `scripts/check-price.mjs` — calls SerpApi's `google_flights` engine with
+  the route/dates/currency fixed (HKG↔CTS, 9–16 Jan 2027, HKD), which returns
+  the same flight combos Google Flights itself shows, already structured as
+  JSON (price, duration, stops, airline — no page-scraping or HTML parsing).
+  Picks the single cheapest fare and the cheapest fare with an outbound leg
+  ≤8h, and writes the result into `data/prices.json` keyed by this run's full
+  timestamp — every run gets its own entry, so more frequent checks mean more
+  data points, not overwritten ones.
 - `.github/workflows/daily-check.yml` (workflow name: "Fare check") — runs
   that script on a cron (every 12h) and commits the updated JSON straight to
   `main`, retrying with a rebase if another commit landed on `main` first.
 - `index.html` — a static page, no build step. Fetches `data/prices.json` on
-  load and renders the same design as the original tracker (chart, stat
-  tiles, check-in table, baggage badges).
+  load and renders the chart/table.
 
 ## Running the check locally
 
 ```bash
-npm install
-npx playwright install --with-deps chromium
-npm run check
+SERPAPI_KEY=your_key_here npm run check
 ```
 
-This updates `data/prices.json` in place. Open `index.html` through a local
-static server (not `file://`, since `fetch()` needs http) to preview, e.g.:
+(No `npm install` needed — the script only uses Node's built-in `fetch`, no
+dependencies.) This updates `data/prices.json` in place. Open `index.html`
+through a local static server (not `file://`, since `fetch()` needs http) to
+preview, e.g.:
 
 ```bash
 npx http-server . -p 4173
@@ -86,10 +89,17 @@ page links to one) and whoever maintains the repo can correct
 
 ## Limitations
 
-- The scraper reads Google Flights' rendered results text, not an official
-  API — if Google changes the page layout, the price check (or just the
-  baggage check) may start failing. The workflow log will show what broke.
-- The baggage-inclusion check is best-effort: it drills into each fare's
-  itinerary summary, which adds a few extra page loads and is more fragile
-  than the price check. If it fails, the day's entry is still logged with
-  the two prices; the bag badge is simply omitted for that day.
+- **No automatic baggage-inclusion check.** SerpApi *can* return whether a
+  fare includes a checked bag, but only via two extra chained API calls per
+  fare (mirroring Google Flights' own outbound → return → itinerary-summary
+  flow). At this check frequency (twice daily × 2 fares) that would run
+  ~300 calls/month against SerpApi's free 250/month limit. We chose to drop
+  automatic baggage checking rather than pay for a plan — check bag
+  inclusion manually on Google Flights when it's time to actually book.
+- **SerpApi's free plan caps out at 250 searches/month.** At 1 call per
+  check × 2 checks/day, this uses ~60/month — comfortable headroom. If the
+  check frequency is ever increased further, watch this limit.
+- Prices reflect what SerpApi's Google Flights engine returns, which itself
+  reflects what Google's partners reported — Google's own fine print says
+  this can lag up to ~24h behind live availability. Treat the board as a
+  trend indicator; verify the real price on Google Flights before booking.
