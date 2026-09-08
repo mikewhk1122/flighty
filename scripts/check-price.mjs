@@ -131,39 +131,46 @@ async function notifyDiscordWebhook(embed) {
   }
 }
 
-// DM the given Discord user directly, via a real Discord Bot application
-// (never a personal/self-bot account — that violates Discord's ToS).
+// DM each configured Discord user directly, via a real Discord Bot
+// application (never a personal/self-bot account — that violates Discord's
+// ToS). DISCORD_USER_ID may hold one id or a comma-separated list — each
+// recipient must already share a server with the bot (Discord requires this
+// before it will open a DM), see README. One recipient's failure doesn't
+// stop the others.
 async function notifyDiscordDM(embed) {
   const token = process.env.DISCORD_BOT_TOKEN;
-  const userId = process.env.DISCORD_USER_ID;
-  if (!token || !userId) return;
+  const rawIds = process.env.DISCORD_USER_ID;
+  if (!token || !rawIds) return;
 
+  const userIds = rawIds.split(',').map((id) => id.trim()).filter(Boolean);
   const headers = {
     Authorization: `Bot ${token}`,
     'Content-Type': 'application/json',
     'User-Agent': 'flighty-fare-bot (https://github.com/mikewhk1122/flighty, 1.0)',
   };
 
-  try {
-    const dmRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ recipient_id: userId }),
-    });
-    if (!dmRes.ok) {
-      console.error('Discord DM-channel open failed:', dmRes.status, await dmRes.text());
-      return;
-    }
-    const channel = await dmRes.json();
+  for (const userId of userIds) {
+    try {
+      const dmRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ recipient_id: userId }),
+      });
+      if (!dmRes.ok) {
+        console.error(`Discord DM-channel open failed for ${userId}:`, dmRes.status, await dmRes.text());
+        continue;
+      }
+      const channel = await dmRes.json();
 
-    const msgRes = await fetch(`https://discord.com/api/v10/channels/${channel.id}/messages`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ embeds: [embed] }),
-    });
-    if (!msgRes.ok) console.error('Discord DM send failed:', msgRes.status, await msgRes.text());
-  } catch (err) {
-    console.error('Discord DM failed:', err.message);
+      const msgRes = await fetch(`https://discord.com/api/v10/channels/${channel.id}/messages`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ embeds: [embed] }),
+      });
+      if (!msgRes.ok) console.error(`Discord DM send failed for ${userId}:`, msgRes.status, await msgRes.text());
+    } catch (err) {
+      console.error(`Discord DM failed for ${userId}:`, err.message);
+    }
   }
 }
 

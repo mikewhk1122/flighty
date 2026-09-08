@@ -70,15 +70,19 @@ workflow just skips notifications and still updates `data/prices.json`.
    Integrations*) → **Webhooks → New Webhook**, pick the channel, copy the URL.
 2. Add it as secret **`DISCORD_WEBHOOK_URL`**.
 
-**A DM to you personally**, via a real Discord Bot application (never a
+**A DM to one or more people**, via a real Discord Bot application (never a
 self-bot / personal-account automation — that violates Discord's ToS):
 1. Create an app at [discord.com/developers/applications](https://discord.com/developers/applications)
    → **Bot** tab → **Reset Token** → copy it → add as secret **`DISCORD_BOT_TOKEN`**.
 2. **OAuth2 → URL Generator** → check scope `bot` (no permissions needed) →
-   open the generated URL → invite it to any server you're in (Discord
-   requires the bot to share a server with you before it can DM you).
-3. Turn on **Developer Mode** (User Settings → Advanced), right-click your
-   own name → **Copy User ID** → add as secret **`DISCORD_USER_ID`**.
+   open the generated URL → invite it to any server every recipient is
+   also in (Discord requires the bot to share a server with someone before
+   it can DM them — invite it to a server everyone in the group is already
+   on, once, and it covers all of them).
+3. For each person: turn on **Developer Mode** (User Settings → Advanced),
+   right-click their name → **Copy User ID**. Add secret **`DISCORD_USER_ID`**
+   with either one id, or several separated by commas (e.g.
+   `111111111111111111,222222222222222222`) to DM more than one person.
 
 ## No write-back from the public page
 
