@@ -85,5 +85,14 @@
     "loggedBy": "Automated check (SerpApi)",
     "loggedAt": "2026-09-09T05:55:40.097Z",
     "note": "Cheapest: Cebu Pacific, 1 stop, ~18h35m. Best <=8h: ANA, 1 stop, ~7h25m."
+  },
+  "2026-09-09T17:08:03.071Z": {
+    "cheapest": 3885,
+    "reasonable": 4491,
+    "currency": "HKD",
+    "source": "auto",
+    "loggedBy": "Automated check (SerpApi)",
+    "loggedAt": "2026-09-09T17:08:03.071Z",
+    "note": "Cheapest: Cebu Pacific, 1 stop, ~18h35m. Best <=8h: ANA, 1 stop, ~7h25m."
   }
 }
