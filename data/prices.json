@@ -103,5 +103,14 @@
     "loggedBy": "Automated check (SerpApi)",
     "loggedAt": "2026-09-10T05:53:53.958Z",
     "note": "Cheapest: ANA, 1 stop, ~10h35m. Best <=8h: Hong Kong Airlines, stops unknown, ~4h50m."
+  },
+  "2026-09-10T16:58:17.679Z": {
+    "cheapest": 4053,
+    "reasonable": 5100,
+    "currency": "HKD",
+    "source": "auto",
+    "loggedBy": "Automated check (SerpApi)",
+    "loggedAt": "2026-09-10T16:58:17.679Z",
+    "note": "Cheapest: Cebu Pacific, 1 stop, ~25h50m. Best <=8h: Hong Kong Airlines, stops unknown, ~4h50m."
   }
 }
