@@ -139,5 +139,14 @@
     "loggedBy": "Automated check (SerpApi)",
     "loggedAt": "2026-09-12T05:40:25.898Z",
     "note": "Cheapest: Cebu Pacific, 1 stop, ~25h50m. Best <=8h: Greater Bay Airlines, stops unknown, ~4h45m."
+  },
+  "2026-09-12T16:14:10.690Z": {
+    "cheapest": 4008,
+    "reasonable": 5317,
+    "currency": "HKD",
+    "source": "auto",
+    "loggedBy": "Automated check (SerpApi)",
+    "loggedAt": "2026-09-12T16:14:10.690Z",
+    "note": "Cheapest: Cebu Pacific, 1 stop, ~25h50m. Best <=8h: Hong Kong Airlines, stops unknown, ~4h50m."
   }
 }
