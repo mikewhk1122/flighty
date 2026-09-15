@@ -223,5 +223,15 @@
     "loggedBy": "Automated check (SerpApi)",
     "loggedAt": "2026-09-15T17:39:22.549Z",
     "note": "Cheapest: Cebu Pacific, 1 stop, ~20h35m. Best <=8h: Hong Kong Airlines, nonstop, ~4h50m. Cheapest nonstop: Hong Kong Airlines, nonstop, ~4h50m."
+  },
+  "2026-09-15T22:11:21.513Z": {
+    "cheapest": 4043,
+    "reasonable": 5316,
+    "nonstop": 5316,
+    "currency": "HKD",
+    "source": "auto",
+    "loggedBy": "Automated check (SerpApi)",
+    "loggedAt": "2026-09-15T22:11:21.513Z",
+    "note": "Cheapest: Cebu Pacific, 1 stop, ~20h35m. Best <=8h: Hong Kong Airlines, nonstop, ~4h50m. Cheapest nonstop: Hong Kong Airlines, nonstop, ~4h50m."
   }
 }
