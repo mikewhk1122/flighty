@@ -2,7 +2,7 @@
 
 A public, no-login fare board for the HKG ↔ CTS (Hong Kong ↔ New Chitose/Sapporo)
 round trip, 9–16 Jan 2027. A GitHub Actions workflow checks Google Flights (via
-[SerpApi](https://serpapi.com)) every 12 hours and commits the result to
+[SerpApi](https://serpapi.com)) every 6 hours and commits the result to
 `data/prices.json`; `index.html` reads that file and renders the chart/table —
 no backend, no database, no login required to view.
 
@@ -24,9 +24,9 @@ no backend, no database, no login required to view.
 5. **Optional — run it once immediately** instead of waiting for the first
    scheduled run: *Actions* tab → "Fare check" workflow → *Run workflow*.
 
-That's it — from then on, the workflow fires at 09:10 and 21:10 Asia/Hong_Kong
-time (every 12h), updates `data/prices.json`, and the Pages site picks up the
-change automatically (no separate deploy step needed).
+That's it — from then on, the workflow fires at 03:10, 09:10, 15:10 and 21:10
+Asia/Hong_Kong time (every 6h), updates `data/prices.json`, and the Pages
+site picks up the change automatically (no separate deploy step needed).
 
 ## How it works
 
@@ -40,7 +40,7 @@ change automatically (no separate deploy step needed).
   run's full timestamp — every run gets its own entry, so more frequent
   checks mean more data points, not overwritten ones.
 - `.github/workflows/daily-check.yml` (workflow name: "Fare check") — runs
-  that script on a cron (every 12h) and commits the updated JSON straight to
+  that script on a cron (every 6h) and commits the updated JSON straight to
   `main`, retrying with a rebase if another commit landed on `main` first.
 - `index.html` — a static page, no build step. Fetches `data/prices.json` on
   load and renders the chart/table.
@@ -97,13 +97,14 @@ page links to one) and whoever maintains the repo can correct
 - **No automatic baggage-inclusion check.** SerpApi *can* return whether a
   fare includes a checked bag, but only via two extra chained API calls per
   fare (mirroring Google Flights' own outbound → return → itinerary-summary
-  flow). At this check frequency (twice daily × 2 fares) that would run
-  ~300 calls/month against SerpApi's free 250/month limit. We chose to drop
+  flow). At this check frequency (4x daily × 2 fares) that would run
+  ~600 calls/month against SerpApi's free 250/month limit. We chose to drop
   automatic baggage checking rather than pay for a plan — check bag
   inclusion manually on Google Flights when it's time to actually book.
 - **SerpApi's free plan caps out at 250 searches/month.** At 1 call per
-  check × 2 checks/day, this uses ~60/month — comfortable headroom. If the
-  check frequency is ever increased further, watch this limit.
+  check × 4 checks/day, this uses ~120/month — still comfortable headroom,
+  but roughly double what it was at the previous 12h cadence. If the check
+  frequency is ever increased further, watch this limit.
 - Prices reflect what SerpApi's Google Flights engine returns, which itself
   reflects what Google's partners reported — Google's own fine print says
   this can lag up to ~24h behind live availability. Treat the board as a

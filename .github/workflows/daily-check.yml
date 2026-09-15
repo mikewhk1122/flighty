@@ -2,8 +2,9 @@ name: Fare check
 
 on:
   schedule:
-    # 01:10 and 13:10 UTC = 09:10 and 21:10 Asia/Hong_Kong (no DST) — every 12h
-    - cron: "10 1,13 * * *"
+    # 01:10, 07:10, 13:10, 19:10 UTC = 09:10, 15:10, 21:10, 03:10 Asia/Hong_Kong
+    # (no DST) — every 6h
+    - cron: "10 1,7,13,19 * * *"
   workflow_dispatch: {}
 
 permissions:
