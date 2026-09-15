@@ -34,10 +34,11 @@ change automatically (no separate deploy step needed).
   the route/dates/currency fixed (HKG↔CTS, 9–16 Jan 2027, HKD), which returns
   the same flight combos Google Flights itself shows, already structured as
   JSON (price, duration, stops, airline — no page-scraping or HTML parsing).
-  Picks the single cheapest fare and the cheapest fare with an outbound leg
-  ≤8h, and writes the result into `data/prices.json` keyed by this run's full
-  timestamp — every run gets its own entry, so more frequent checks mean more
-  data points, not overwritten ones.
+  Picks three fares — the single cheapest overall, the cheapest with an
+  outbound leg ≤8h, and the cheapest nonstop (omitted for a run where none is
+  available) — and writes the result into `data/prices.json` keyed by this
+  run's full timestamp — every run gets its own entry, so more frequent
+  checks mean more data points, not overwritten ones.
 - `.github/workflows/daily-check.yml` (workflow name: "Fare check") — runs
   that script on a cron (every 12h) and commits the updated JSON straight to
   `main`, retrying with a rebase if another commit landed on `main` first.

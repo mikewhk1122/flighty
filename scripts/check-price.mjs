@@ -74,7 +74,10 @@ function normalize(entry) {
   return {
     price: entry.price,
     minutes: entry.total_duration ?? null,
-    stops: Array.isArray(entry.layovers) ? entry.layovers.length : null,
+    // SerpApi omits `layovers` entirely for nonstop combos rather than
+    // sending an empty array — treat "no layovers field" as 0 stops, not
+    // "unknown" (which used to make nonstop flights misreport as such).
+    stops: Array.isArray(entry.layovers) ? entry.layovers.length : 0,
     airline: airlines.join('/') || null,
   };
 }
@@ -87,7 +90,7 @@ function describeFlight(f) {
   return parts.join(', ');
 }
 
-function buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, prev }) {
+function buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight, prev }) {
   let deltaLine = '首次記錄';
   let color = 0x8a93a1; // neutral grey
   if (prev && typeof prev.cheapest === 'number') {
@@ -109,6 +112,11 @@ function buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, prev }) {
     fields: [
       { name: '最低價', value: `HK$${cheapestFlight.price.toLocaleString()}\n${describeFlight(cheapestFlight)}`, inline: true },
       { name: '8小時內', value: `HK$${reasonableFlight.price.toLocaleString()}\n${describeFlight(reasonableFlight)}`, inline: true },
+      {
+        name: '直飛',
+        value: nonstopFlight ? `HK$${nonstopFlight.price.toLocaleString()}\n${describeFlight(nonstopFlight)}` : '暫時冇直飛航班',
+        inline: true,
+      },
       { name: '對比上次查詢', value: deltaLine, inline: false },
     ],
     footer: { text: '自動查詢 · flighty' },
@@ -198,6 +206,8 @@ async function main() {
   const underEight = combos.filter((f) => f.minutes != null && f.minutes <= REASONABLE_MAX_MINUTES);
   const reasonableFlight = (underEight.length ? underEight : combos.slice().sort((a, b) => (a.minutes ?? 1e9) - (b.minutes ?? 1e9)))
     .reduce((a, b) => (b.price < a.price ? b : a));
+  const nonstopCombos = combos.filter((f) => f.stops === 0);
+  const nonstopFlight = nonstopCombos.length ? nonstopCombos.reduce((a, b) => (b.price < a.price ? b : a)) : null;
 
   const loggedAt = new Date().toISOString();
   const docId = loggedAt;
@@ -205,7 +215,8 @@ async function main() {
   const note =
     `Cheapest: ${describeFlight(cheapestFlight)}.` +
     ` Best <=8h: ${describeFlight(reasonableFlight)}` +
-    (underEight.length === 0 ? ' (no itinerary was <=8h; used the shortest available instead).' : '.');
+    (underEight.length === 0 ? ' (no itinerary was <=8h; used the shortest available instead).' : '.') +
+    (nonstopFlight ? ` Cheapest nonstop: ${describeFlight(nonstopFlight)}.` : ' No nonstop itinerary was available.');
 
   let store = {};
   try {
@@ -219,6 +230,7 @@ async function main() {
   store[docId] = {
     cheapest: cheapestFlight.price,
     reasonable: reasonableFlight.price,
+    ...(nonstopFlight ? { nonstop: nonstopFlight.price } : {}),
     currency: 'HKD',
     source: 'auto',
     loggedBy: 'Automated check (SerpApi)',
@@ -228,12 +240,13 @@ async function main() {
 
   await writeFile(DATA_PATH, JSON.stringify(store, null, 2) + '\n', 'utf8');
 
-  const embed = buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, prev });
+  const embed = buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight, prev });
   await notifyDiscordWebhook(embed);
   await notifyDiscordDM(embed);
 
   let summary = `Cheapest HK$${cheapestFlight.price.toLocaleString()} (${describeFlight(cheapestFlight)}). ` +
-    `<=8h fare HK$${reasonableFlight.price.toLocaleString()} (${describeFlight(reasonableFlight)}).`;
+    `<=8h fare HK$${reasonableFlight.price.toLocaleString()} (${describeFlight(reasonableFlight)}). ` +
+    (nonstopFlight ? `Nonstop HK$${nonstopFlight.price.toLocaleString()} (${describeFlight(nonstopFlight)}).` : 'No nonstop available.');
   if (prev && typeof prev.cheapest === 'number') {
     const diff = cheapestFlight.price - prev.cheapest;
     const pct = prev.cheapest ? (diff / prev.cheapest) * 100 : 0;
