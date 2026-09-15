@@ -85,6 +85,15 @@ self-bot / personal-account automation — that violates Discord's ToS):
    with either one id, or several separated by commas (e.g.
    `111111111111111111,222222222222222222`) to DM more than one person.
 
+## Optional: `/check` slash command
+
+Type `/check` in a DM with the bot (or any server it's in) for a live fare
+lookup on demand, instead of waiting for the next scheduled check. This is
+a separate piece — a small Cloudflare Worker, since answering a slash
+command needs a live endpoint that the cron-only setup above doesn't have.
+See [`discord-bot/README.md`](discord-bot/README.md) for what it is and how
+to (re)deploy it. `/check` is read-only — it doesn't touch `data/prices.json`.
+
 ## No write-back from the public page
 
 The public page is view-only — there's no backend to safely accept anonymous

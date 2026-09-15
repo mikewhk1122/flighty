@@ -1,0 +1,11 @@
+name = "flighty-discord-bot"
+main = "src/index.mjs"
+compatibility_date = "2024-09-23"
+
+# Public, non-secret identifiers for the Discord application (safe to
+# commit — these aren't credentials, just IDs). The actual secret,
+# SERPAPI_KEY, is set separately via `wrangler secret put SERPAPI_KEY`
+# so it never lands in git history.
+[vars]
+DISCORD_APPLICATION_ID = "1546599393174487080"
+DISCORD_PUBLIC_KEY = "e0e3e363fd5e7ad8fb526364f64a948920e6e1fef116443874f1e15d602d1c91"
