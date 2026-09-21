@@ -453,5 +453,15 @@
     "loggedBy": "Automated check (SerpApi)",
     "loggedAt": "2026-09-21T14:01:18.246Z",
     "note": "Cheapest: Cebu Pacific, 1 stop, ~20h35m. Best <=8h: Greater Bay Airlines, nonstop, ~4h45m. Cheapest nonstop: Greater Bay Airlines, nonstop, ~4h45m."
+  },
+  "2026-09-21T22:33:57.099Z": {
+    "cheapest": 4028,
+    "reasonable": 5406,
+    "nonstop": 5406,
+    "currency": "HKD",
+    "source": "auto",
+    "loggedBy": "Automated check (SerpApi)",
+    "loggedAt": "2026-09-21T22:33:57.099Z",
+    "note": "Cheapest: Cebu Pacific, 1 stop, ~20h35m. Best <=8h: Greater Bay Airlines, nonstop, ~4h45m. Cheapest nonstop: Greater Bay Airlines, nonstop, ~4h45m."
   }
 }
