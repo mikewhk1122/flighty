@@ -33,7 +33,7 @@ const SEARCH_PARAMS = {
 };
 
 const REASONABLE_MAX_MINUTES = 8 * 60;
-const SITE_URL = 'https://mikewhk1122.github.io/flighty/';
+const SITE_URL = 'https://flight.mikewky.com/';
 
 // A human-readable Asia/Hong_Kong timestamp, e.g. "2026-09-08 09:10 HKT".
 function nowHKLabel() {

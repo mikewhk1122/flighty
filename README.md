@@ -24,6 +24,12 @@ no backend, no database, no login required to view.
 5. **Optional — run it once immediately** instead of waiting for the first
    scheduled run: *Actions* tab → "Fare check" workflow → *Run workflow*.
 
+**Custom domain:** this deployment is served at **https://flight.mikewky.com**
+via the `CNAME` file in the repo root, plus a DNS record in Cloudflare
+(`CNAME flight → mikewhk1122.github.io`, **DNS only / grey cloud**, so GitHub
+can issue the HTTPS cert). The old `mikewhk1122.github.io/flighty` address
+redirects there automatically.
+
 That's it — from then on, the workflow fires at 03:10, 09:10, 15:10 and 21:10
 Asia/Hong_Kong time (every 6h), updates `data/prices.json`, and the Pages
 site picks up the change automatically (no separate deploy step needed).

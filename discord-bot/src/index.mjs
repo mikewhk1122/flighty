@@ -29,7 +29,7 @@ const SEARCH_PARAMS = {
 };
 
 const REASONABLE_MAX_MINUTES = 8 * 60;
-const SITE_URL = 'https://mikewhk1122.github.io/flighty/';
+const SITE_URL = 'https://flight.mikewky.com/';
 
 function jsonResponse(obj) {
   return new Response(JSON.stringify(obj), {

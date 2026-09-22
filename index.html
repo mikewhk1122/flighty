@@ -320,14 +320,11 @@
     return d.toLocaleString('zh-Hant-HK', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Hong_Kong' });
   };
 
-  // Point the footer/report links at this repo, however it's hosted (works
-  // on a project page like user.github.io/repo/ or a custom domain).
+  // Footer/report links. Hardcoded because the site is served from a
+  // custom domain (flight.mikewky.com), so the repo can't be inferred from
+  // a *.github.io hostname.
   (function wireRepoLinks() {
-    var path = location.pathname.replace(/^\/|\/$/g, '').split('/');
-    var repoSlug = path.length && path[0] ? path[0] : '';
-    var host = location.hostname; // e.g. "username.github.io"
-    var owner = host.endsWith('.github.io') ? host.replace('.github.io', '') : '';
-    var repoUrl = owner && repoSlug ? 'https://github.com/' + owner + '/' + repoSlug : 'https://github.com';
+    var repoUrl = 'https://github.com/mikewhk1122/flighty';
     document.getElementById('issuesLink').href = repoUrl + '/issues/new?title=' + encodeURIComponent('票價有誤');
     document.getElementById('repoLink').href = repoUrl + '/actions';
   })();
