@@ -45,7 +45,8 @@ needs to be redone (token rotation, moving to a new account, etc.):
    npx wrangler deploy
    ```
    Wrangler prints the deployed URL, e.g.
-   `https://flighty-discord-bot.<your-subdomain>.workers.dev`.
+   `https://flighty-discord-bot.<your-subdomain>.workers.dev`, plus any custom
+   domain in `wrangler.toml` (this deployment: `https://bot.mikewky.com`).
 4. **Point Discord at it**: Developer Portal → application → *General
    Information* → **Interactions Endpoint URL** → paste that URL → Save.
    Discord immediately sends a test PING; the Worker must answer correctly

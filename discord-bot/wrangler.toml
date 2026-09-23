@@ -2,6 +2,14 @@ name = "flighty-discord-bot"
 main = "src/index.mjs"
 compatibility_date = "2024-09-23"
 
+# Served at bot.mikewky.com (Cloudflare creates the DNS record + cert for a
+# Worker custom domain automatically). The workers.dev URL is kept on as a
+# fallback.
+workers_dev = true
+routes = [
+  { pattern = "bot.mikewky.com", custom_domain = true },
+]
+
 # Public, non-secret identifiers for the Discord application (safe to
 # commit — these aren't credentials, just IDs). The actual secret,
 # SERPAPI_KEY, is set separately via `wrangler secret put SERPAPI_KEY`
