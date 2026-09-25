@@ -68,6 +68,18 @@
           3600
         ],
         "note": "Cheapest: Jetstar, 1 stop, ~17h40m. Best <=8h: Greater Bay Airlines, nonstop, ~4h35m. Cheapest nonstop: Greater Bay Airlines, nonstop, ~4h35m."
+      },
+      {
+        "checkedAt": "2026-09-25T12:44:27.476Z",
+        "cheapest": 3477,
+        "reasonable": 4065,
+        "nonstop": 4065,
+        "level": "typical",
+        "typicalRange": [
+          2850,
+          3600
+        ],
+        "note": "Cheapest: Jetstar, 1 stop, ~17h40m. Best <=8h: Hong Kong Airlines, nonstop, ~4h50m. Cheapest nonstop: Hong Kong Airlines, nonstop, ~4h50m."
       }
     ]
   }
