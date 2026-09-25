@@ -151,7 +151,20 @@
   .swatch.reasonable { background: var(--ink-faint); background-image: repeating-linear-gradient(90deg, var(--ink-faint) 0 4px, transparent 4px 7px); }
   .swatch.nonstop { background: var(--accent2); background-image: repeating-linear-gradient(90deg, var(--accent2) 0 2px, transparent 2px 5px); }
 
-  #chart-wrap { overflow-x: auto; }
+  #chart-wrap { overflow-x: auto; position: relative; }
+  svg#chart { touch-action: pan-y; cursor: crosshair; }
+  .hover-line { stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 3 3; }
+  .chart-tip {
+    position: absolute; top: 8px; z-index: 2; pointer-events: none;
+    min-width: 190px; padding: 10px 12px; border-radius: 8px;
+    background: var(--surface-raised); border: 1px solid var(--line-strong); box-shadow: var(--shadow);
+    font-size: 12.5px; line-height: 1.55; color: var(--ink);
+  }
+  .chart-tip .tip-date { font-weight: 700; margin-bottom: 4px; }
+  .chart-tip .tip-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .chart-tip .tip-row span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+  .chart-tip .tip-row b { font-family: 'Space Mono', monospace; font-weight: 700; }
+  .chart-tip .tip-foot { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-soft); }
   svg#chart { display: block; min-width: 560px; width: 100%; height: auto; }
   .grid-line { stroke: var(--line); stroke-width: 1; }
   .axis-label { fill: var(--ink-faint); font-size: 10.5px; font-family: 'Space Mono', 'Noto Sans TC', monospace; }
@@ -289,6 +302,7 @@
     </div>
     <div id="chart-wrap">
       <svg id="chart" viewBox="0 0 900 260" preserveAspectRatio="xMinYMid meet"></svg>
+      <div class="chart-tip" id="chartTip" hidden></div>
     </div>
   </section>
 
@@ -580,10 +594,14 @@
       parts.push('<text class="axis-label" x="' + (padL - 8) + '" y="' + (yy + 3) + '" text-anchor="end">$' + Math.round(v).toLocaleString() + '</text>');
     }
 
+    // ~8 date labels. The last one is right-aligned so it isn't clipped, and
+    // the regular label just before it is skipped if the two would collide.
     var step = Math.ceil(n / 8);
     sorted.forEach(function (e, i) {
-      if (i % step === 0 || i === n - 1) {
-        parts.push('<text class="axis-label" x="' + x(i) + '" y="' + (H - padB + 16) + '" text-anchor="middle">' + fmtDateShort(e.date) + '</text>');
+      var isLast = i === n - 1;
+      if (isLast || (i % step === 0 && (n === 1 || n - 1 - i >= step * 0.7))) {
+        var anchor = isLast && n > 1 ? 'end' : 'middle';
+        parts.push('<text class="axis-label" x="' + x(i) + '" y="' + (H - padB + 16) + '" text-anchor="' + anchor + '">' + fmtDateShort(e.date) + '</text>');
       }
     });
 
@@ -610,22 +628,104 @@
       return 'fill="var(' + colorVar + ')" stroke="none" opacity="0.45"';
     }
 
+    // Guide line + enlarged dots for the hovered check; hidden until hover.
+    parts.push('<line class="hover-line" id="hoverLine" x1="0" x2="0" y1="' + padT + '" y2="' + (H - padB) + '" visibility="hidden"></line>');
+
     sorted.forEach(function (e, i) {
-      var titleCheap = fmtDateShort(e.date) + ' · 最低價 ' + fmtHKD.format(e.cheapest) +
-        (e.bagCheap === 'included' ? ' · 已含行李' : e.bagCheap === 'extra' ? ' · 行李另收費' : ' · 行李狀況未知');
-      parts.push('<circle cx="' + x(i) + '" cy="' + y(e.cheapest) + '" r="3.5" ' + dotAttrs('--accent', e.bagCheap) + '><title>' + titleCheap + '</title></circle>');
+      parts.push('<circle cx="' + x(i) + '" cy="' + y(e.cheapest) + '" r="3.5" ' + dotAttrs('--accent', e.bagCheap) + '></circle>');
       if (e.reasonable != null) {
-        var titleR = fmtDateShort(e.date) + ' · 8小時內 ' + fmtHKD.format(e.reasonable) +
-          (e.bagReasonable === 'included' ? ' · 已含行李' : e.bagReasonable === 'extra' ? ' · 行李另收費' : ' · 行李狀況未知');
-        parts.push('<circle cx="' + x(i) + '" cy="' + y(e.reasonable) + '" r="3" ' + dotAttrs('--ink-faint', e.bagReasonable) + '><title>' + titleR + '</title></circle>');
+        parts.push('<circle cx="' + x(i) + '" cy="' + y(e.reasonable) + '" r="3" ' + dotAttrs('--ink-faint', e.bagReasonable) + '></circle>');
       }
       if (e.nonstop != null) {
-        var titleN = fmtDateShort(e.date) + ' · 最平直飛 ' + fmtHKD.format(e.nonstop);
-        parts.push('<circle cx="' + x(i) + '" cy="' + y(e.nonstop) + '" r="3" fill="var(--accent2)"><title>' + titleN + '</title></circle>');
+        parts.push('<circle cx="' + x(i) + '" cy="' + y(e.nonstop) + '" r="3" fill="var(--accent2)"></circle>');
       }
     });
 
+    parts.push('<g id="hoverDots" visibility="hidden"></g>');
     svg.innerHTML = parts.join('');
+
+    attachChartHover(svg, sorted, { W: W, padL: padL, padR: padR, x: x, y: y, n: n });
+  }
+
+  // "2026年9月25日（四）14:14" in Hong Kong time.
+  function fmtFull(id) {
+    var d = parseWhen(id);
+    var date = d.toLocaleDateString('zh-Hant-HK', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Hong_Kong' });
+    var wd = d.toLocaleDateString('zh-Hant-HK', { weekday: 'narrow', timeZone: 'Asia/Hong_Kong' });
+    if (id.length <= 10) return date + '（' + wd + '）';
+    var time = d.toLocaleTimeString('zh-Hant-HK', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Hong_Kong' });
+    return date + '（' + wd + '）' + time;
+  }
+
+  // Hover (mouse) / tap (touch) anywhere over the chart: snap to the nearest
+  // check, draw a guide line, enlarge its dots and show a box with the full
+  // date/time and every tracked price at that check.
+  function attachChartHover(svg, sorted, g) {
+    var tip = document.getElementById('chartTip');
+    var wrap = document.getElementById('chart-wrap');
+    var line = svg.querySelector('#hoverLine');
+    var dots = svg.querySelector('#hoverDots');
+
+    function hide() {
+      tip.hidden = true;
+      line.setAttribute('visibility', 'hidden');
+      dots.setAttribute('visibility', 'hidden');
+    }
+
+    function row(swatch, label, value) {
+      return '<div class="tip-row"><span><i class="swatch ' + swatch + '"></i>' + label + '</span><b>' +
+        (value != null ? fmtHKD.format(value) : '—') + '</b></div>';
+    }
+
+    function show(clientX) {
+      var ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      var pt = svg.createSVGPoint();
+      pt.x = clientX; pt.y = 0;
+      var sx = pt.matrixTransform(ctm.inverse()).x;
+      var i = g.n === 1 ? 0 : Math.round((sx - g.padL) / (g.W - g.padL - g.padR) * (g.n - 1));
+      i = Math.max(0, Math.min(g.n - 1, i));
+      var e = sorted[i];
+      var cx = g.x(i);
+
+      line.setAttribute('x1', cx); line.setAttribute('x2', cx);
+      line.setAttribute('visibility', 'visible');
+      var big = '<circle cx="' + cx + '" cy="' + g.y(e.cheapest) + '" r="5.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"></circle>';
+      if (e.reasonable != null) big += '<circle cx="' + cx + '" cy="' + g.y(e.reasonable) + '" r="4.5" fill="var(--ink-faint)" stroke="var(--surface)" stroke-width="2"></circle>';
+      if (e.nonstop != null) big += '<circle cx="' + cx + '" cy="' + g.y(e.nonstop) + '" r="4.5" fill="var(--accent2)" stroke="var(--surface)" stroke-width="2"></circle>';
+      dots.innerHTML = big;
+      dots.setAttribute('visibility', 'visible');
+
+      var prev = i > 0 ? sorted[i - 1] : null;
+      var delta = '';
+      if (prev) {
+        var d = e.cheapest - prev.cheapest;
+        delta = d === 0
+          ? '<span class="pill flat">±$0</span>'
+          : '<span class="pill ' + (d < 0 ? 'good' : 'bad') + '">' + (d < 0 ? '▼' : '▲') + ' $' + Math.abs(d).toLocaleString() + '</span>';
+      }
+      tip.innerHTML =
+        '<div class="tip-date">' + fmtFull(e.date) + '</div>' +
+        row('cheap', '最低價', e.cheapest) +
+        row('reasonable', '8小時內', e.reasonable) +
+        row('nonstop', '直飛', e.nonstop) +
+        ((delta || e.level) ? '<div class="tip-foot"><span>' + (delta ? '較上次 ' + delta : '') + '</span>' +
+          (e.level ? levelPill(e.level) : '') + '</div>' : '');
+      tip.hidden = false;
+
+      // Position beside the guide line, flipping to the left near the right edge.
+      var wrapRect = wrap.getBoundingClientRect();
+      var lineX = cx * ctm.a + ctm.e - wrapRect.left + wrap.scrollLeft;
+      var tipW = tip.offsetWidth;
+      var left = lineX + 14;
+      if (left + tipW > wrap.scrollLeft + wrap.clientWidth) left = lineX - 14 - tipW;
+      tip.style.left = Math.max(wrap.scrollLeft, left) + 'px';
+    }
+
+    svg.onpointermove = function (ev) { show(ev.clientX); };
+    svg.onpointerdown = function (ev) { show(ev.clientX); };
+    svg.onpointerleave = function (ev) { if (ev.pointerType === 'mouse') hide(); };
+    document.addEventListener('pointerdown', function (ev) { if (!svg.contains(ev.target)) hide(); });
   }
 
   function getJSON(url) {
