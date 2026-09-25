@@ -34,6 +34,101 @@ const SEARCH_PARAMS = {
 
 const REASONABLE_MAX_MINUTES = 8 * 60;
 const SITE_URL = 'https://flight.mikewky.com/';
+const ALT_DATA_PATH = path.join(__dirname, '..', 'data', 'alt-dates.json');
+
+// Alternative 7-night date ranges shown on the board's "compare dates"
+// table. Checked far less often than the main trip to stay inside SerpApi's
+// free 250 searches/month: only on the 01:10 and 13:10 UTC runs, one range
+// per run in rotation, so each range refreshes every 2 days (~60/month on
+// top of the main trip's ~120). ALT_CHECK=all checks every range at once
+// (used to seed the data; costs one search per range).
+const ALT_RANGES = [
+  ['2027-01-08', '2027-01-15'],
+  ['2027-01-10', '2027-01-17'],
+  ['2027-01-11', '2027-01-18'],
+  ['2027-01-12', '2027-01-19'],
+];
+
+function altRangesDueNow(now = new Date()) {
+  if (process.env.ALT_CHECK === 'all') return ALT_RANGES;
+  const hour = now.getUTCHours();
+  // Only the runs near 01:10 and 13:10 UTC (the cron also fires at 07:10
+  // and 19:10, and GitHub may start a scheduled run late).
+  const half = hour >= 0 && hour < 6 ? 0 : hour >= 12 && hour < 18 ? 1 : null;
+  if (half === null) return [];
+  const days = Math.floor(now.getTime() / 86400000);
+  return [ALT_RANGES[(days * 2 + half) % ALT_RANGES.length]];
+}
+
+// Pick the three tracked fares (cheapest, cheapest <=8h outbound, cheapest
+// nonstop) plus Google's own price-level verdict out of one SerpApi result.
+function analyze(data) {
+  const combos = [...(data.best_flights || []), ...(data.other_flights || [])]
+    .map(normalize)
+    .filter((f) => Number.isFinite(f.price) && f.price > 0);
+  if (combos.length === 0) return null;
+  const cheapestFlight = combos.reduce((a, b) => (b.price < a.price ? b : a));
+  const underEight = combos.filter((f) => f.minutes != null && f.minutes <= REASONABLE_MAX_MINUTES);
+  const reasonableFlight = (underEight.length ? underEight : combos.slice().sort((a, b) => (a.minutes ?? 1e9) - (b.minutes ?? 1e9)))
+    .reduce((a, b) => (b.price < a.price ? b : a));
+  const nonstopCombos = combos.filter((f) => f.stops === 0);
+  const nonstopFlight = nonstopCombos.length ? nonstopCombos.reduce((a, b) => (b.price < a.price ? b : a)) : null;
+  const insights = data.price_insights || {};
+  return {
+    cheapestFlight,
+    reasonableFlight,
+    nonstopFlight,
+    hadUnderEight: underEight.length > 0,
+    level: insights.price_level || null, // "low" | "typical" | "high"
+    typicalRange: Array.isArray(insights.typical_price_range) ? insights.typical_price_range : null,
+  };
+}
+
+const LEVEL_LABEL = { low: '偏低', typical: '一般', high: '偏高' };
+
+// Check whichever alternative ranges are due and append a snapshot per range
+// to data/alt-dates.json. Never throws — a failure here must not cost the
+// main trip's check (which has already been written by the time this runs).
+async function checkAltRanges(apiKey) {
+  const due = altRangesDueNow();
+  if (!due.length) return;
+
+  let store = {};
+  try {
+    store = JSON.parse(await readFile(ALT_DATA_PATH, 'utf8'));
+  } catch {
+    store = {};
+  }
+
+  for (const [outbound, ret] of due) {
+    const key = `${outbound}_${ret}`;
+    try {
+      const a = analyze(await fetchFlights(apiKey, outbound, ret));
+      if (!a) {
+        console.error(`Alt range ${key}: no usable flight combos, skipped.`);
+        continue;
+      }
+      const entry = store[key] || { outbound, return: ret, history: [] };
+      entry.history.push({
+        checkedAt: new Date().toISOString(),
+        cheapest: a.cheapestFlight.price,
+        reasonable: a.reasonableFlight.price,
+        ...(a.nonstopFlight ? { nonstop: a.nonstopFlight.price } : {}),
+        level: a.level,
+        typicalRange: a.typicalRange,
+        note:
+          `Cheapest: ${describeFlight(a.cheapestFlight)}. Best <=8h: ${describeFlight(a.reasonableFlight)}.` +
+          (a.nonstopFlight ? ` Cheapest nonstop: ${describeFlight(a.nonstopFlight)}.` : ' No nonstop.'),
+      });
+      store[key] = entry;
+      console.log(`Alt ${key}: cheapest HK$${a.cheapestFlight.price}, nonstop ${a.nonstopFlight ? 'HK$' + a.nonstopFlight.price : '—'}, level ${a.level}.`);
+    } catch (err) {
+      console.error(`Alt range ${key} failed:`, err.message);
+    }
+  }
+
+  await writeFile(ALT_DATA_PATH, JSON.stringify(store, null, 2) + '\n', 'utf8');
+}
 
 // A human-readable Asia/Hong_Kong timestamp, e.g. "2026-09-08 09:10 HKT".
 function nowHKLabel() {
@@ -50,9 +145,11 @@ function findPreviousEntry(store, beforeKey) {
   return store[keys[keys.length - 1]];
 }
 
-async function fetchFlights(apiKey) {
+async function fetchFlights(apiKey, outboundDate = SEARCH_PARAMS.outbound_date, returnDate = SEARCH_PARAMS.return_date) {
   const url = new URL('https://serpapi.com/search.json');
   for (const [k, v] of Object.entries(SEARCH_PARAMS)) url.searchParams.set(k, v);
+  url.searchParams.set('outbound_date', outboundDate);
+  url.searchParams.set('return_date', returnDate);
   url.searchParams.set('api_key', apiKey);
 
   const res = await fetch(url);
@@ -90,7 +187,7 @@ function describeFlight(f) {
   return parts.join(', ');
 }
 
-function buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight, prev }) {
+function buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight, level, typicalRange, prev }) {
   let deltaLine = '首次記錄';
   let color = 0x8a93a1; // neutral grey
   if (prev && typeof prev.cheapest === 'number') {
@@ -117,7 +214,15 @@ function buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight
         value: nonstopFlight ? `HK$${nonstopFlight.price.toLocaleString()}\n${describeFlight(nonstopFlight)}` : '暫時冇直飛航班',
         inline: true,
       },
-      { name: '對比上次查詢', value: deltaLine, inline: false },
+      { name: '對比上次查詢', value: deltaLine, inline: true },
+      ...(level
+        ? [{
+          name: 'Google 價格水平',
+          value: `${LEVEL_LABEL[level] || level}` +
+            (typicalRange ? `（一般 HK$${typicalRange[0].toLocaleString()}–${typicalRange[1].toLocaleString()}）` : ''),
+          inline: true,
+        }]
+        : []),
     ],
     footer: { text: '自動查詢 · flighty' },
     timestamp: new Date().toISOString(),
@@ -191,23 +296,16 @@ async function main() {
   }
 
   const data = await fetchFlights(apiKey);
-  const combos = [...(data.best_flights || []), ...(data.other_flights || [])]
-    .map(normalize)
-    .filter((f) => Number.isFinite(f.price) && f.price > 0);
+  const analysis = analyze(data);
 
-  if (combos.length === 0) {
+  if (!analysis) {
     console.error('SerpApi returned no usable flight combos. Skipping write.');
     console.error(JSON.stringify(data).slice(0, 1000));
     process.exitCode = 1;
     return;
   }
 
-  const cheapestFlight = combos.reduce((a, b) => (b.price < a.price ? b : a));
-  const underEight = combos.filter((f) => f.minutes != null && f.minutes <= REASONABLE_MAX_MINUTES);
-  const reasonableFlight = (underEight.length ? underEight : combos.slice().sort((a, b) => (a.minutes ?? 1e9) - (b.minutes ?? 1e9)))
-    .reduce((a, b) => (b.price < a.price ? b : a));
-  const nonstopCombos = combos.filter((f) => f.stops === 0);
-  const nonstopFlight = nonstopCombos.length ? nonstopCombos.reduce((a, b) => (b.price < a.price ? b : a)) : null;
+  const { cheapestFlight, reasonableFlight, nonstopFlight, hadUnderEight, level, typicalRange } = analysis;
 
   const loggedAt = new Date().toISOString();
   const docId = loggedAt;
@@ -215,7 +313,7 @@ async function main() {
   const note =
     `Cheapest: ${describeFlight(cheapestFlight)}.` +
     ` Best <=8h: ${describeFlight(reasonableFlight)}` +
-    (underEight.length === 0 ? ' (no itinerary was <=8h; used the shortest available instead).' : '.') +
+    (hadUnderEight ? '.' : ' (no itinerary was <=8h; used the shortest available instead).') +
     (nonstopFlight ? ` Cheapest nonstop: ${describeFlight(nonstopFlight)}.` : ' No nonstop itinerary was available.');
 
   let store = {};
@@ -231,6 +329,8 @@ async function main() {
     cheapest: cheapestFlight.price,
     reasonable: reasonableFlight.price,
     ...(nonstopFlight ? { nonstop: nonstopFlight.price } : {}),
+    ...(level ? { level } : {}),
+    ...(typicalRange ? { typicalRange } : {}),
     currency: 'HKD',
     source: 'auto',
     loggedBy: 'Automated check (SerpApi)',
@@ -240,9 +340,11 @@ async function main() {
 
   await writeFile(DATA_PATH, JSON.stringify(store, null, 2) + '\n', 'utf8');
 
-  const embed = buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight, prev });
+  const embed = buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight, level, typicalRange, prev });
   await notifyDiscordWebhook(embed);
   await notifyDiscordDM(embed);
+
+  await checkAltRanges(apiKey);
 
   let summary = `Cheapest HK$${cheapestFlight.price.toLocaleString()} (${describeFlight(cheapestFlight)}). ` +
     `<=8h fare HK$${reasonableFlight.price.toLocaleString()} (${describeFlight(reasonableFlight)}). ` +

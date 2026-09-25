@@ -174,6 +174,18 @@
   .badge.manual { background: var(--line); color: var(--ink-soft); }
   .row-note { color: var(--ink-faint); font-size: 12px; white-space: normal; }
 
+  /* ---------- Date comparison ---------- */
+  table.compare tr.mine td { background: var(--accent-soft); }
+  table.compare tr.mine td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  .mine-tag { display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 700; color: var(--accent-soft-ink); }
+  td.best { font-weight: 700; color: var(--good); }
+  .level { display: inline-flex; align-items: center; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+  .level.low { background: var(--good-soft); color: var(--good); }
+  .level.typical { background: var(--line); color: var(--ink-soft); }
+  .level.high { background: var(--bad-soft); color: var(--bad); }
+  .level-range { display: block; margin-top: 3px; font-size: 11px; color: var(--ink-faint); font-family: 'Space Mono', monospace; }
+  .compare-foot { margin: 10px 0 0; }
+
   /* ---------- Info / report box ---------- */
   .infobox {
     display: flex; align-items: flex-start; gap: 10px;
@@ -239,6 +251,31 @@
       <div class="sub" id="statCountSub">自首次記錄起</div>
     </div>
   </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>日期比較</h2>
+      <div class="legend">同樣 7 晚，唔同出發日（每位來回連稅）。★ = 該欄最平</div>
+    </div>
+    <div class="table-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th class="num">最低價</th>
+            <th class="num">8小時內</th>
+            <th class="num">直飛</th>
+            <th>Google 價格水平</th>
+            <th>更新時間</th>
+          </tr>
+        </thead>
+        <tbody id="compareBody">
+          <tr><td colspan="6" class="row-note">載入中…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="row-note compare-foot">你嘅行程每 6 小時更新；其他日期每 2 日更新一次（為咗唔超出 SerpApi 免費額度）。</p>
+  </section>
 
   <section class="panel">
     <div class="panel-head">
@@ -344,6 +381,79 @@
     return '';
   }
 
+  var LEVEL_LABEL = { low: '偏低', typical: '一般', high: '偏高' };
+  function levelPill(level, range) {
+    if (!level) return '<span class="row-note">—</span>';
+    var html = '<span class="level ' + level + '">' + (LEVEL_LABEL[level] || level) + '</span>';
+    if (range && range.length === 2) {
+      html += '<span class="level-range">一般 $' + range[0].toLocaleString() + '–' + range[1].toLocaleString() + '</span>';
+    }
+    return html;
+  }
+
+  // "1月9日（六）→ 1月16日（六）"
+  function fmtRange(outbound, ret) {
+    function one(iso) {
+      var d = new Date(iso + 'T00:00:00Z');
+      var md = (d.getUTCMonth() + 1) + '月' + d.getUTCDate() + '日';
+      var wd = d.toLocaleDateString('zh-Hant-HK', { weekday: 'narrow', timeZone: 'UTC' });
+      return md + '（' + wd + '）';
+    }
+    return one(outbound) + ' → ' + one(ret);
+  }
+
+  // One row per date range: the main trip (latest entry of prices.json) plus
+  // every alternative range (latest snapshot in alt-dates.json), sorted by
+  // outbound date. The cheapest value in each price column gets a ★.
+  function renderCompare(latestMain, altStore) {
+    var rows = [];
+    if (latestMain) {
+      rows.push({
+        outbound: '2027-01-09', ret: '2027-01-16', mine: true,
+        cheapest: latestMain.cheapest, reasonable: latestMain.reasonable, nonstop: latestMain.nonstop,
+        level: latestMain.level, typicalRange: latestMain.typicalRange, checkedAt: latestMain.loggedAt,
+      });
+    }
+    Object.keys(altStore || {}).forEach(function (key) {
+      var r = altStore[key];
+      var h = r.history && r.history[r.history.length - 1];
+      if (!h) return;
+      rows.push({
+        outbound: r.outbound, ret: r['return'], mine: false,
+        cheapest: h.cheapest, reasonable: h.reasonable, nonstop: h.nonstop != null ? h.nonstop : null,
+        level: h.level, typicalRange: h.typicalRange, checkedAt: h.checkedAt,
+      });
+    });
+    rows.sort(function (a, b) { return a.outbound < b.outbound ? -1 : 1; });
+
+    var body = document.getElementById('compareBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="6" class="row-note">暫時未有資料。</td></tr>';
+      return;
+    }
+
+    function minOf(key) {
+      var vals = rows.map(function (r) { return r[key]; }).filter(function (v) { return v != null; });
+      return vals.length ? Math.min.apply(null, vals) : null;
+    }
+    var best = { cheapest: minOf('cheapest'), reasonable: minOf('reasonable'), nonstop: minOf('nonstop') };
+    function priceCell(r, key) {
+      var v = r[key];
+      if (v == null) return '<td class="num"><span class="row-note">—</span></td>';
+      var isBest = v === best[key] && rows.length > 1;
+      return '<td class="num' + (isBest ? ' best' : '') + '">' + (isBest ? '★ ' : '') + fmtHKD.format(v) + '</td>';
+    }
+
+    body.innerHTML = rows.map(function (r) {
+      return '<tr' + (r.mine ? ' class="mine"' : '') + '>' +
+        '<td>' + fmtRange(r.outbound, r.ret) + (r.mine ? '<span class="mine-tag">你嘅行程</span>' : '') + '</td>' +
+        priceCell(r, 'cheapest') + priceCell(r, 'reasonable') + priceCell(r, 'nonstop') +
+        '<td>' + levelPill(r.level, r.typicalRange) + '</td>' +
+        '<td class="row-note">' + (r.checkedAt ? fmtDateShort(r.checkedAt) : '—') + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
   function render(entries) {
     var sorted = entries.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
 
@@ -368,7 +478,7 @@
       var latest = sorted[sorted.length - 1];
       statLatest.textContent = fmtHKD.format(latest.cheapest);
       statLatestSub.textContent = fmtDateShort(latest.date) + ' 查詢';
-      statLatestBag.innerHTML = bagBadge(latest.bagCheap);
+      statLatestBag.innerHTML = bagBadge(latest.bagCheap) + (latest.level ? ' ' + levelPill(latest.level) : '');
 
       if (sorted.length >= 2) {
         var prev = sorted[sorted.length - 2];
@@ -518,9 +628,20 @@
     svg.innerHTML = parts.join('');
   }
 
-  fetch('data/prices.json', { cache: 'no-store' })
-    .then(function (r) { return r.json(); })
-    .then(function (store) {
+  function getJSON(url) {
+    return fetch(url, { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error(url + ' HTTP ' + r.status);
+      return r.json();
+    });
+  }
+
+  Promise.all([
+    getJSON('data/prices.json'),
+    // Optional: the compare-dates table just shows the main trip if missing.
+    getJSON('data/alt-dates.json').catch(function () { return {}; }),
+  ])
+    .then(function (res) {
+      var store = res[0];
       var entries = Object.keys(store).map(function (date) {
         var d = store[date];
         return {
@@ -530,14 +651,19 @@
           nonstop: d.nonstop != null ? d.nonstop : null,
           bagCheap: d.bagCheap || null,
           bagReasonable: d.bagReasonable || null,
+          level: d.level || null,
+          typicalRange: d.typicalRange || null,
           loggedAt: d.loggedAt || null,
         };
       });
       render(entries);
+      var latest = entries.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).pop();
+      renderCompare(latest, res[1]);
     })
     .catch(function (err) {
-      console.error('failed to load data/prices.json', err);
+      console.error('failed to load price data', err);
       render([]);
+      renderCompare(null, {});
     });
 })();
 </script>

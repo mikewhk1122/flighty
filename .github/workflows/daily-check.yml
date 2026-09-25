@@ -39,10 +39,10 @@ jobs:
         run: |
           git config user.name "hkg-cts-fares-bot"
           git config user.email "actions@users.noreply.github.com"
-          if git diff --quiet -- data/prices.json; then
+          git add data/
+          if git diff --cached --quiet; then
             echo "No price change to commit."
           else
-            git add data/prices.json
             git commit -m "Daily fare check: $(date -u +%Y-%m-%d)"
             # Another commit (a manual re-run, a same-day retry) may have
             # landed on main since this job checked it out — rebase onto

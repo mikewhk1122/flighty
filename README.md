@@ -116,10 +116,16 @@ page links to one) and whoever maintains the repo can correct
   ~600 calls/month against SerpApi's free 250/month limit. We chose to drop
   automatic baggage checking rather than pay for a plan — check bag
   inclusion manually on Google Flights when it's time to actually book.
-- **SerpApi's free plan caps out at 250 searches/month.** At 1 call per
-  check × 4 checks/day, this uses ~120/month — still comfortable headroom,
-  but roughly double what it was at the previous 12h cadence. If the check
-  frequency is ever increased further, watch this limit.
+- **SerpApi's free plan caps out at 250 searches/month.** The main trip
+  (9–16 Jan) is checked every 6h: ~120/month. The four alternative date
+  ranges on the board's "日期比較" table (`ALT_RANGES` in
+  `scripts/check-price.mjs`, stored in `data/alt-dates.json`) are checked
+  one per run on 2 of the 4 daily runs, so each refreshes every 2 days:
+  ~60/month. Total ~180, leaving ~70 for `/check`. Adding more ranges or
+  checking them more often will run past the free tier.
+- Google's own price verdict (`price_level`: low / typical / high, plus the
+  "typical" price range) comes back free with every search and is stored
+  per check and shown on the board.
 - Prices reflect what SerpApi's Google Flights engine returns, which itself
   reflects what Google's partners reported — Google's own fine print says
   this can lag up to ~24h behind live availability. Treat the board as a

@@ -1,0 +1,74 @@
+{
+  "2027-01-08_2027-01-15": {
+    "outbound": "2027-01-08",
+    "return": "2027-01-15",
+    "history": [
+      {
+        "checkedAt": "2026-09-25T06:14:21.983Z",
+        "cheapest": 3997,
+        "reasonable": 4065,
+        "nonstop": 4065,
+        "level": "high",
+        "typicalRange": [
+          3000,
+          3750
+        ],
+        "note": "Cheapest: Jetstar, 1 stop, ~8h05m. Best <=8h: Hong Kong Airlines, nonstop, ~4h50m. Cheapest nonstop: Hong Kong Airlines, nonstop, ~4h50m."
+      }
+    ]
+  },
+  "2027-01-10_2027-01-17": {
+    "outbound": "2027-01-10",
+    "return": "2027-01-17",
+    "history": [
+      {
+        "checkedAt": "2026-09-25T06:14:22.026Z",
+        "cheapest": 3889,
+        "reasonable": 4825,
+        "nonstop": 5204,
+        "level": "high",
+        "typicalRange": [
+          3000,
+          3750
+        ],
+        "note": "Cheapest: Jetstar, 1 stop, ~13h35m. Best <=8h: ANA, 1 stop, ~6h55m. Cheapest nonstop: Greater Bay Airlines, nonstop, ~4h45m."
+      }
+    ]
+  },
+  "2027-01-11_2027-01-18": {
+    "outbound": "2027-01-11",
+    "return": "2027-01-18",
+    "history": [
+      {
+        "checkedAt": "2026-09-25T06:14:22.066Z",
+        "cheapest": 3677,
+        "reasonable": 4194,
+        "nonstop": 4194,
+        "level": "typical",
+        "typicalRange": [
+          3000,
+          3750
+        ],
+        "note": "Cheapest: Cebu Pacific, 1 stop, ~18h40m. Best <=8h: Greater Bay Airlines, nonstop, ~4h35m. Cheapest nonstop: Greater Bay Airlines, nonstop, ~4h35m."
+      }
+    ]
+  },
+  "2027-01-12_2027-01-19": {
+    "outbound": "2027-01-12",
+    "return": "2027-01-19",
+    "history": [
+      {
+        "checkedAt": "2026-09-25T06:14:22.110Z",
+        "cheapest": 3477,
+        "reasonable": 4194,
+        "nonstop": 4194,
+        "level": "typical",
+        "typicalRange": [
+          2850,
+          3600
+        ],
+        "note": "Cheapest: Jetstar, 1 stop, ~17h40m. Best <=8h: Greater Bay Airlines, nonstop, ~4h35m. Cheapest nonstop: Greater Bay Airlines, nonstop, ~4h35m."
+      }
+    ]
+  }
+}
