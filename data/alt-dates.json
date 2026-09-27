@@ -181,6 +181,19 @@
           3600
         ],
         "note": "Cheapest: Jetstar, 1 stop, ~17h40m. Best <=8h: Hong Kong Airlines, nonstop, ~4h50m. Cheapest nonstop: Hong Kong Airlines, nonstop, ~4h50m. Cathay: CX 580 09:10, nonstop, ~4h40m."
+      },
+      {
+        "checkedAt": "2026-09-27T17:42:50.678Z",
+        "cheapest": 3477,
+        "reasonable": 4116,
+        "nonstop": 4116,
+        "cathay": 12102,
+        "level": "typical",
+        "typicalRange": [
+          2850,
+          3600
+        ],
+        "note": "Cheapest: Jetstar, 1 stop, ~17h40m. Best <=8h: Hong Kong Airlines, nonstop, ~4h50m. Cheapest nonstop: Hong Kong Airlines, nonstop, ~4h50m. Cathay: CX 580 09:10, nonstop, ~4h40m."
       }
     ]
   }
