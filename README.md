@@ -123,6 +123,10 @@ page links to one) and whoever maintains the repo can correct
   one per run on 2 of the 4 daily runs, so each refreshes every 2 days:
   ~60/month. Total ~180, leaving ~70 for `/check`. Adding more ranges or
   checking them more often will run past the free tier.
+- The cheapest **Cathay Pacific** fare (every leg marketed by Cathay, e.g.
+  CX580) is tracked as its own column/line, picked from the same search
+  result — no extra searches. Its chart line is off by default (toggle in the
+  legend) since at ~HK$10k+ it would flatten the other lines.
 - Google's own price verdict (`price_level`: low / typical / high, plus the
   "typical" price range) comes back free with every search and is stored
   per check and shown on the board.

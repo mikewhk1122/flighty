@@ -22,6 +22,7 @@
     --accent-soft: #dfeef5;
     --accent-soft-ink: #124a63;
     --accent2: #b8752a;
+    --accent3: #7b4fb3;
     --good: #1c8a5e;
     --good-soft: #dcf2e7;
     --bad: #b2394a;
@@ -45,6 +46,7 @@
       --accent-soft: #17323d;
       --accent-soft-ink: #a9dced;
       --accent2: #e3ab5e;
+      --accent3: #b69ae6;
       --good: #4bc491;
       --good-soft: #123526;
       --bad: #e28796;
@@ -68,6 +70,7 @@
     --accent-soft: #17323d;
     --accent-soft-ink: #a9dced;
     --accent2: #e3ab5e;
+    --accent3: #b69ae6;
     --good: #4bc491;
     --good-soft: #123526;
     --bad: #e28796;
@@ -150,6 +153,9 @@
   .swatch.cheap { background: var(--accent); }
   .swatch.reasonable { background: var(--ink-faint); background-image: repeating-linear-gradient(90deg, var(--ink-faint) 0 4px, transparent 4px 7px); }
   .swatch.nonstop { background: var(--accent2); background-image: repeating-linear-gradient(90deg, var(--accent2) 0 2px, transparent 2px 5px); }
+  .swatch.cathay { background: var(--accent3); }
+  .legend label.toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .legend label.toggle input { margin: 0; accent-color: var(--accent3); cursor: pointer; }
 
   #chart-wrap { overflow-x: auto; position: relative; }
   svg#chart { touch-action: pan-y; cursor: crosshair; }
@@ -171,6 +177,7 @@
   .line-cheap { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
   .line-reasonable { fill: none; stroke: var(--ink-faint); stroke-width: 2; stroke-dasharray: 5 4; stroke-linecap: round; }
   .line-nonstop { fill: none; stroke: var(--accent2); stroke-width: 2; stroke-dasharray: 2 3; stroke-linecap: round; }
+  .line-cathay { fill: none; stroke: var(--accent3); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   .chart-empty { color: var(--ink-faint); font-size: 13px; padding: 30px 0; text-align: center; }
 
   /* ---------- Table ---------- */
@@ -278,12 +285,13 @@
             <th class="num">最低價</th>
             <th class="num">8小時內</th>
             <th class="num">直飛</th>
+            <th class="num">國泰</th>
             <th>Google 價格水平</th>
             <th>更新時間</th>
           </tr>
         </thead>
         <tbody id="compareBody">
-          <tr><td colspan="6" class="row-note">載入中…</td></tr>
+          <tr><td colspan="7" class="row-note">載入中…</td></tr>
         </tbody>
       </table>
     </div>
@@ -297,6 +305,7 @@
         <span><i class="swatch cheap"></i>最低價</span>
         <span><i class="swatch reasonable"></i>8小時內最佳航班</span>
         <span><i class="swatch nonstop"></i>最平直飛</span>
+        <label class="toggle"><input type="checkbox" id="showCathay"><i class="swatch cathay"></i>國泰（HK$ 較高，預設隱藏）</label>
         <span>● 已含行李 · ○ 行李另收費</span>
       </div>
     </div>
@@ -318,12 +327,13 @@
             <th class="num">最低價</th>
             <th class="num">8小時內</th>
             <th class="num">直飛</th>
+            <th class="num">國泰</th>
             <th class="num">較上次</th>
             <th>來源</th>
           </tr>
         </thead>
         <tbody id="logBody">
-          <tr><td colspan="6" class="row-note">載入中…</td></tr>
+          <tr><td colspan="7" class="row-note">載入中…</td></tr>
         </tbody>
       </table>
     </div>
@@ -424,7 +434,7 @@
     if (latestMain) {
       rows.push({
         outbound: '2027-01-09', ret: '2027-01-16', mine: true,
-        cheapest: latestMain.cheapest, reasonable: latestMain.reasonable, nonstop: latestMain.nonstop,
+        cheapest: latestMain.cheapest, reasonable: latestMain.reasonable, nonstop: latestMain.nonstop, cathay: latestMain.cathay,
         level: latestMain.level, typicalRange: latestMain.typicalRange, checkedAt: latestMain.loggedAt,
       });
     }
@@ -435,6 +445,7 @@
       rows.push({
         outbound: r.outbound, ret: r['return'], mine: false,
         cheapest: h.cheapest, reasonable: h.reasonable, nonstop: h.nonstop != null ? h.nonstop : null,
+        cathay: h.cathay != null ? h.cathay : null,
         level: h.level, typicalRange: h.typicalRange, checkedAt: h.checkedAt,
       });
     });
@@ -442,7 +453,7 @@
 
     var body = document.getElementById('compareBody');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="6" class="row-note">暫時未有資料。</td></tr>';
+      body.innerHTML = '<tr><td colspan="7" class="row-note">暫時未有資料。</td></tr>';
       return;
     }
 
@@ -450,7 +461,7 @@
       var vals = rows.map(function (r) { return r[key]; }).filter(function (v) { return v != null; });
       return vals.length ? Math.min.apply(null, vals) : null;
     }
-    var best = { cheapest: minOf('cheapest'), reasonable: minOf('reasonable'), nonstop: minOf('nonstop') };
+    var best = { cheapest: minOf('cheapest'), reasonable: minOf('reasonable'), nonstop: minOf('nonstop'), cathay: minOf('cathay') };
     function priceCell(r, key) {
       var v = r[key];
       if (v == null) return '<td class="num"><span class="row-note">—</span></td>';
@@ -461,7 +472,7 @@
     body.innerHTML = rows.map(function (r) {
       return '<tr' + (r.mine ? ' class="mine"' : '') + '>' +
         '<td>' + fmtRange(r.outbound, r.ret) + (r.mine ? '<span class="mine-tag">你嘅行程</span>' : '') + '</td>' +
-        priceCell(r, 'cheapest') + priceCell(r, 'reasonable') + priceCell(r, 'nonstop') +
+        priceCell(r, 'cheapest') + priceCell(r, 'reasonable') + priceCell(r, 'nonstop') + priceCell(r, 'cathay') +
         '<td>' + levelPill(r.level, r.typicalRange) + '</td>' +
         '<td class="row-note">' + (r.checkedAt ? fmtDateShort(r.checkedAt) : '—') + '</td>' +
         '</tr>';
@@ -522,7 +533,7 @@
 
     var body = document.getElementById('logBody');
     if (sorted.length === 0) {
-      body.innerHTML = '<tr><td colspan="6" class="row-note">尚未有任何記錄。</td></tr>';
+      body.innerHTML = '<tr><td colspan="7" class="row-note">尚未有任何記錄。</td></tr>';
     } else {
       body.innerHTML = sorted.slice().reverse().map(function (e) {
         var priorIdx = sorted.indexOf(e) - 1;
@@ -539,11 +550,13 @@
           ? '<div class="price-cell">' + fmtHKD.format(e.reasonable) + bagBadge(e.bagReasonable) + '</div>'
           : '<span class="row-note">—</span>';
         var nonstopCell = e.nonstop != null ? fmtHKD.format(e.nonstop) : '<span class="row-note">—</span>';
+        var cathayCell = e.cathay != null ? fmtHKD.format(e.cathay) : '<span class="row-note">—</span>';
         return '<tr>' +
           '<td>' + fmtDateShort(e.date) + '</td>' +
           '<td class="num">' + cheapCell + '</td>' +
           '<td class="num">' + reasonableCell + '</td>' +
           '<td class="num">' + nonstopCell + '</td>' +
+          '<td class="num">' + cathayCell + '</td>' +
           '<td class="num">' + deltaCell + '</td>' +
           '<td>' + srcBadge + '</td>' +
           '</tr>';
@@ -559,7 +572,20 @@
     }
   }
 
+  // Cathay (~HK$10k+) would flatten the other lines if always drawn, so it's
+  // opt-in via the legend toggle (remembered per browser).
+  var lastChartData = [];
+  var cathayToggle = document.getElementById('showCathay');
+  try { cathayToggle.checked = localStorage.getItem('showCathay') === '1'; } catch (e) {}
+  cathayToggle.addEventListener('change', function () {
+    try { localStorage.setItem('showCathay', cathayToggle.checked ? '1' : '0'); } catch (e) {}
+    document.getElementById('chartTip').hidden = true;
+    drawChart(lastChartData);
+  });
+
   function drawChart(sorted) {
+    lastChartData = sorted;
+    var showCathay = cathayToggle.checked;
     var svg = document.getElementById('chart');
     var W = 900, H = 260, padL = 56, padR = 20, padT = 16, padB = 34;
 
@@ -573,6 +599,7 @@
       allVals.push(e.cheapest);
       if (e.reasonable != null) allVals.push(e.reasonable);
       if (e.nonstop != null) allVals.push(e.nonstop);
+      if (showCathay && e.cathay != null) allVals.push(e.cathay);
     });
     var vMin = Math.min.apply(null, allVals);
     var vMax = Math.max.apply(null, allVals);
@@ -599,7 +626,9 @@
     var step = Math.ceil(n / 8);
     sorted.forEach(function (e, i) {
       var isLast = i === n - 1;
-      if (isLast || (i % step === 0 && (n === 1 || n - 1 - i >= step * 0.7))) {
+      // A right-aligned last label is ~80 units wide; a centred one needs
+      // ~40 either side, so keep regular labels at least 125 units clear of it.
+      if (isLast || (i % step === 0 && (n === 1 || x(n - 1) - x(i) >= 125))) {
         var anchor = isLast && n > 1 ? 'end' : 'middle';
         parts.push('<text class="axis-label" x="' + x(i) + '" y="' + (H - padB + 16) + '" text-anchor="' + anchor + '">' + fmtDateShort(e.date) + '</text>');
       }
@@ -619,6 +648,7 @@
     if (n > 1) {
       parts.push('<path class="line-reasonable" d="' + pathFor('reasonable') + '"></path>');
       parts.push('<path class="line-nonstop" d="' + pathFor('nonstop') + '"></path>');
+      if (showCathay) parts.push('<path class="line-cathay" d="' + pathFor('cathay') + '"></path>');
       parts.push('<path class="line-cheap" d="' + pathFor('cheapest') + '"></path>');
     }
 
@@ -639,12 +669,15 @@
       if (e.nonstop != null) {
         parts.push('<circle cx="' + x(i) + '" cy="' + y(e.nonstop) + '" r="3" fill="var(--accent2)"></circle>');
       }
+      if (showCathay && e.cathay != null) {
+        parts.push('<circle cx="' + x(i) + '" cy="' + y(e.cathay) + '" r="3" fill="var(--accent3)"></circle>');
+      }
     });
 
     parts.push('<g id="hoverDots" visibility="hidden"></g>');
     svg.innerHTML = parts.join('');
 
-    attachChartHover(svg, sorted, { W: W, padL: padL, padR: padR, x: x, y: y, n: n });
+    attachChartHover(svg, sorted, { W: W, padL: padL, padR: padR, x: x, y: y, n: n, showCathay: showCathay });
   }
 
   // "2026年9月25日（四）14:14" in Hong Kong time.
@@ -693,6 +726,7 @@
       var big = '<circle cx="' + cx + '" cy="' + g.y(e.cheapest) + '" r="5.5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"></circle>';
       if (e.reasonable != null) big += '<circle cx="' + cx + '" cy="' + g.y(e.reasonable) + '" r="4.5" fill="var(--ink-faint)" stroke="var(--surface)" stroke-width="2"></circle>';
       if (e.nonstop != null) big += '<circle cx="' + cx + '" cy="' + g.y(e.nonstop) + '" r="4.5" fill="var(--accent2)" stroke="var(--surface)" stroke-width="2"></circle>';
+      if (g.showCathay && e.cathay != null) big += '<circle cx="' + cx + '" cy="' + g.y(e.cathay) + '" r="4.5" fill="var(--accent3)" stroke="var(--surface)" stroke-width="2"></circle>';
       dots.innerHTML = big;
       dots.setAttribute('visibility', 'visible');
 
@@ -709,6 +743,7 @@
         row('cheap', '最低價', e.cheapest) +
         row('reasonable', '8小時內', e.reasonable) +
         row('nonstop', '直飛', e.nonstop) +
+        row('cathay', '國泰', e.cathay) +
         ((delta || e.level) ? '<div class="tip-foot"><span>' + (delta ? '較上次 ' + delta : '') + '</span>' +
           (e.level ? levelPill(e.level) : '') + '</div>' : '');
       tip.hidden = false;
@@ -725,7 +760,18 @@
     svg.onpointermove = function (ev) { show(ev.clientX); };
     svg.onpointerdown = function (ev) { show(ev.clientX); };
     svg.onpointerleave = function (ev) { if (ev.pointerType === 'mouse') hide(); };
-    document.addEventListener('pointerdown', function (ev) { if (!svg.contains(ev.target)) hide(); });
+    // The chart is redrawn when the Cathay toggle changes; register the
+    // tap-outside-to-close handler only once.
+    if (!attachChartHover.outsideBound) {
+      attachChartHover.outsideBound = true;
+      document.addEventListener('pointerdown', function (ev) {
+        if (!document.getElementById('chart').contains(ev.target)) {
+          document.getElementById('chartTip').hidden = true;
+          var l = document.getElementById('hoverLine'); if (l) l.setAttribute('visibility', 'hidden');
+          var d = document.getElementById('hoverDots'); if (d) d.setAttribute('visibility', 'hidden');
+        }
+      });
+    }
   }
 
   function getJSON(url) {
@@ -749,6 +795,7 @@
           cheapest: d.cheapest,
           reasonable: d.reasonable != null ? d.reasonable : null,
           nonstop: d.nonstop != null ? d.nonstop : null,
+          cathay: d.cathay != null ? d.cathay : null,
           bagCheap: d.bagCheap || null,
           bagReasonable: d.bagReasonable || null,
           level: d.level || null,

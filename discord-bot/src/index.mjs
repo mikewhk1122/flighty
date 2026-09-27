@@ -77,7 +77,18 @@ function normalize(entry) {
     minutes: entry.total_duration ?? null,
     stops: Array.isArray(entry.layovers) ? entry.layovers.length : 0,
     airline: airlines.join('/') || null,
+    allCathay: legs.length > 0 && legs.every((f) => /cathay/i.test(f.airline || '')),
+    flightNumbers: legs.map((f) => f.flight_number).filter(Boolean),
+    departTime: legs[0]?.departure_airport?.time?.slice(11, 16) || null,
   };
+}
+
+function describeCathay(f) {
+  const parts = [];
+  if (f.flightNumbers.length) parts.push(f.flightNumbers.join(' + ') + (f.departTime ? ` ${f.departTime}` : ''));
+  parts.push(f.stops === 0 ? 'nonstop' : `${f.stops} stop${f.stops === 1 ? '' : 's'}`);
+  if (f.minutes != null) parts.push(`~${Math.floor(f.minutes / 60)}h${String(f.minutes % 60).padStart(2, '0')}m`);
+  return parts.join(', ');
 }
 
 function describeFlight(f) {
@@ -143,6 +154,8 @@ async function handleCheckCommand(interaction, env) {
       .reduce((a, b) => (b.price < a.price ? b : a));
     const nonstopCombos = combos.filter((f) => f.stops === 0);
     const nonstopFlight = nonstopCombos.length ? nonstopCombos.reduce((a, b) => (b.price < a.price ? b : a)) : null;
+    const cathayCombos = combos.filter((f) => f.allCathay);
+    const cathayFlight = cathayCombos.length ? cathayCombos.reduce((a, b) => (b.price < a.price ? b : a)) : null;
 
     const deltaLine = await fetchBoardDelta(cheapestFlight.price);
 
@@ -152,6 +165,11 @@ async function handleCheckCommand(interaction, env) {
       {
         name: '直飛',
         value: nonstopFlight ? `HK$${nonstopFlight.price.toLocaleString()}\n${describeFlight(nonstopFlight)}` : '暫時冇直飛航班',
+        inline: true,
+      },
+      {
+        name: '國泰 Cathay',
+        value: cathayFlight ? `HK$${cathayFlight.price.toLocaleString()}\n${describeCathay(cathayFlight)}` : '暫時冇國泰航班',
         inline: true,
       },
     ];

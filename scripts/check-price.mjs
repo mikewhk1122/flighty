@@ -73,11 +73,14 @@ function analyze(data) {
     .reduce((a, b) => (b.price < a.price ? b : a));
   const nonstopCombos = combos.filter((f) => f.stops === 0);
   const nonstopFlight = nonstopCombos.length ? nonstopCombos.reduce((a, b) => (b.price < a.price ? b : a)) : null;
+  const cathayCombos = combos.filter((f) => f.allCathay);
+  const cathayFlight = cathayCombos.length ? cathayCombos.reduce((a, b) => (b.price < a.price ? b : a)) : null;
   const insights = data.price_insights || {};
   return {
     cheapestFlight,
     reasonableFlight,
     nonstopFlight,
+    cathayFlight,
     hadUnderEight: underEight.length > 0,
     level: insights.price_level || null, // "low" | "typical" | "high"
     typicalRange: Array.isArray(insights.typical_price_range) ? insights.typical_price_range : null,
@@ -114,14 +117,16 @@ async function checkAltRanges(apiKey) {
         cheapest: a.cheapestFlight.price,
         reasonable: a.reasonableFlight.price,
         ...(a.nonstopFlight ? { nonstop: a.nonstopFlight.price } : {}),
+        ...(a.cathayFlight ? { cathay: a.cathayFlight.price } : {}),
         level: a.level,
         typicalRange: a.typicalRange,
         note:
           `Cheapest: ${describeFlight(a.cheapestFlight)}. Best <=8h: ${describeFlight(a.reasonableFlight)}.` +
-          (a.nonstopFlight ? ` Cheapest nonstop: ${describeFlight(a.nonstopFlight)}.` : ' No nonstop.'),
+          (a.nonstopFlight ? ` Cheapest nonstop: ${describeFlight(a.nonstopFlight)}.` : ' No nonstop.') +
+          (a.cathayFlight ? ` Cathay: ${describeCathay(a.cathayFlight)}.` : ' No Cathay fare.'),
       });
       store[key] = entry;
-      console.log(`Alt ${key}: cheapest HK$${a.cheapestFlight.price}, nonstop ${a.nonstopFlight ? 'HK$' + a.nonstopFlight.price : '—'}, level ${a.level}.`);
+      console.log(`Alt ${key}: cheapest HK$${a.cheapestFlight.price}, nonstop ${a.nonstopFlight ? 'HK$' + a.nonstopFlight.price : '—'}, Cathay ${a.cathayFlight ? 'HK$' + a.cathayFlight.price : '—'}, level ${a.level}.`);
     } catch (err) {
       console.error(`Alt range ${key} failed:`, err.message);
     }
@@ -176,7 +181,21 @@ function normalize(entry) {
     // "unknown" (which used to make nonstop flights misreport as such).
     stops: Array.isArray(entry.layovers) ? entry.layovers.length : 0,
     airline: airlines.join('/') || null,
+    // Every leg marketed by Cathay Pacific (e.g. CX580 nonstop, or a CX-only
+    // connection) — used for the dedicated Cathay price.
+    allCathay: legs.length > 0 && legs.every((f) => /cathay/i.test(f.airline || '')),
+    flightNumbers: legs.map((f) => f.flight_number).filter(Boolean),
+    departTime: legs[0]?.departure_airport?.time?.slice(11, 16) || null, // "09:10"
   };
+}
+
+// "CX 580 09:10, nonstop, ~4h40m"
+function describeCathay(f) {
+  const parts = [];
+  if (f.flightNumbers.length) parts.push(f.flightNumbers.join(' + ') + (f.departTime ? ` ${f.departTime}` : ''));
+  parts.push(f.stops === 0 ? 'nonstop' : `${f.stops} stop${f.stops === 1 ? '' : 's'}`);
+  if (f.minutes != null) parts.push(`~${Math.floor(f.minutes / 60)}h${String(f.minutes % 60).padStart(2, '0')}m`);
+  return parts.join(', ');
 }
 
 function describeFlight(f) {
@@ -187,7 +206,7 @@ function describeFlight(f) {
   return parts.join(', ');
 }
 
-function buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight, level, typicalRange, prev }) {
+function buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight, cathayFlight, level, typicalRange, prev }) {
   let deltaLine = '首次記錄';
   let color = 0x8a93a1; // neutral grey
   if (prev && typeof prev.cheapest === 'number') {
@@ -212,6 +231,11 @@ function buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight
       {
         name: '直飛',
         value: nonstopFlight ? `HK$${nonstopFlight.price.toLocaleString()}\n${describeFlight(nonstopFlight)}` : '暫時冇直飛航班',
+        inline: true,
+      },
+      {
+        name: '國泰 Cathay',
+        value: cathayFlight ? `HK$${cathayFlight.price.toLocaleString()}\n${describeCathay(cathayFlight)}` : '暫時冇國泰航班',
         inline: true,
       },
       { name: '對比上次查詢', value: deltaLine, inline: true },
@@ -305,7 +329,7 @@ async function main() {
     return;
   }
 
-  const { cheapestFlight, reasonableFlight, nonstopFlight, hadUnderEight, level, typicalRange } = analysis;
+  const { cheapestFlight, reasonableFlight, nonstopFlight, cathayFlight, hadUnderEight, level, typicalRange } = analysis;
 
   const loggedAt = new Date().toISOString();
   const docId = loggedAt;
@@ -314,7 +338,8 @@ async function main() {
     `Cheapest: ${describeFlight(cheapestFlight)}.` +
     ` Best <=8h: ${describeFlight(reasonableFlight)}` +
     (hadUnderEight ? '.' : ' (no itinerary was <=8h; used the shortest available instead).') +
-    (nonstopFlight ? ` Cheapest nonstop: ${describeFlight(nonstopFlight)}.` : ' No nonstop itinerary was available.');
+    (nonstopFlight ? ` Cheapest nonstop: ${describeFlight(nonstopFlight)}.` : ' No nonstop itinerary was available.') +
+    (cathayFlight ? ` Cathay: ${describeCathay(cathayFlight)}.` : ' No Cathay fare was available.');
 
   let store = {};
   try {
@@ -329,6 +354,7 @@ async function main() {
     cheapest: cheapestFlight.price,
     reasonable: reasonableFlight.price,
     ...(nonstopFlight ? { nonstop: nonstopFlight.price } : {}),
+    ...(cathayFlight ? { cathay: cathayFlight.price } : {}),
     ...(level ? { level } : {}),
     ...(typicalRange ? { typicalRange } : {}),
     currency: 'HKD',
@@ -340,7 +366,7 @@ async function main() {
 
   await writeFile(DATA_PATH, JSON.stringify(store, null, 2) + '\n', 'utf8');
 
-  const embed = buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight, level, typicalRange, prev });
+  const embed = buildEmbed({ whenLabel, cheapestFlight, reasonableFlight, nonstopFlight, cathayFlight, level, typicalRange, prev });
   await notifyDiscordWebhook(embed);
   await notifyDiscordDM(embed);
 
@@ -348,7 +374,8 @@ async function main() {
 
   let summary = `Cheapest HK$${cheapestFlight.price.toLocaleString()} (${describeFlight(cheapestFlight)}). ` +
     `<=8h fare HK$${reasonableFlight.price.toLocaleString()} (${describeFlight(reasonableFlight)}). ` +
-    (nonstopFlight ? `Nonstop HK$${nonstopFlight.price.toLocaleString()} (${describeFlight(nonstopFlight)}).` : 'No nonstop available.');
+    (nonstopFlight ? `Nonstop HK$${nonstopFlight.price.toLocaleString()} (${describeFlight(nonstopFlight)}).` : 'No nonstop available.') +
+    (cathayFlight ? ` Cathay HK$${cathayFlight.price.toLocaleString()} (${describeCathay(cathayFlight)}).` : ' No Cathay fare.');
   if (prev && typeof prev.cheapest === 'number') {
     const diff = cheapestFlight.price - prev.cheapest;
     const pct = prev.cheapest ? (diff / prev.cheapest) * 100 : 0;
