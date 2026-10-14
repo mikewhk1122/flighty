@@ -1544,5 +1544,21 @@
     "loggedBy": "Automated check (SerpApi)",
     "loggedAt": "2026-10-14T06:06:10.000Z",
     "note": "Cheapest: Jetstar, 1 stop, ~13h35m. Best <=8h: ANA/Air Do, 1 stop, ~7h45m. Cheapest nonstop: Greater Bay Airlines, nonstop, ~4h45m. Cathay: CX 580 09:10, nonstop, ~4h40m."
+  },
+  "2026-10-14T12:50:39.279Z": {
+    "cheapest": 3570,
+    "reasonable": 5404,
+    "nonstop": 5404,
+    "cathay": 10302,
+    "level": "typical",
+    "typicalRange": [
+      3000,
+      3750
+    ],
+    "currency": "HKD",
+    "source": "auto",
+    "loggedBy": "Automated check (SerpApi)",
+    "loggedAt": "2026-10-14T12:50:39.279Z",
+    "note": "Cheapest: Jetstar, 1 stop, ~13h35m. Best <=8h: Greater Bay Airlines, nonstop, ~4h45m. Cheapest nonstop: Greater Bay Airlines, nonstop, ~4h45m. Cathay: CX 580 09:10, nonstop, ~4h40m."
   }
 }
