@@ -79,6 +79,19 @@
           3750
         ],
         "note": "Cheapest: Jetstar, 1 stop, ~8h05m. Best <=8h: Greater Bay Airlines, nonstop, ~4h50m. Cheapest nonstop: Greater Bay Airlines, nonstop, ~4h50m. Cathay: CX 586 12:20, nonstop, ~4h30m."
+      },
+      {
+        "checkedAt": "2026-10-24T05:45:56.084Z",
+        "cheapest": 4125,
+        "reasonable": 4396,
+        "nonstop": 4396,
+        "cathay": 12104,
+        "level": "high",
+        "typicalRange": [
+          3000,
+          3750
+        ],
+        "note": "Cheapest: Jetstar, 1 stop, ~8h05m. Best <=8h: Greater Bay Airlines, nonstop, ~4h50m. Cheapest nonstop: Greater Bay Airlines, nonstop, ~4h50m. Cathay: CX 580 09:10, nonstop, ~4h40m."
       }
     ]
   },
